@@ -13,7 +13,15 @@ export async function getPostBySlug(slug: string) {
 }
 
 export async function createPost(title:string, content: string, slug: string) {
-    return await prisma.post.create({
-        data: {title, content, slug}
-    })
+    try{
+        return await prisma.post.create({
+            data: {title, content, slug}
+        })
+    } catch ( err: any ){
+        if(err.code === "P2002"){
+            console.log(err.meta)
+            throw new Error("Slug already exists")
+        }
+        throw new Error("Error creating post");
+    }
 }
