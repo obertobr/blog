@@ -9,11 +9,11 @@ export async function createPostAction(initialState: any, formData: FormData) {
 
     try{
         const post = await createPost(title, content, slug)
-        return { ...initialState, post }
+        return { ...initialState, slug: post.slug }
     } catch(err: any){
         const message = err.message
 
-        return { ...initialState, message }
+        return { ...initialState, message, formData }
     }
 
 }

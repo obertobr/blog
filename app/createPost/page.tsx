@@ -1,13 +1,11 @@
 'use client'
 import { redirect } from "next/navigation"
-import { createPost } from "../_lib/posts"
-import { slugify } from "../_lib/util"
 import toast from "react-hot-toast"
 import { useActionState } from "react"
 import { createPostAction } from "../_lib/actions"
 import React from "react"
 
-const initialState = { message: '', post: null }
+const initialState = { message: '', slug: null }
 
 export default function newPostPage() {
     const [state, formAction, pending] = useActionState(createPostAction, initialState)
@@ -15,9 +13,9 @@ export default function newPostPage() {
     React.useEffect(() => {
         if (!state) return
 
-        if (state.post) {
+        if (state.slug) {
             toast.success("Post Created")
-            setTimeout(redirect(`post/${state.post.slug}`), 500)
+            redirect(`post/${state.slug}`)
         } else if (state.message) {
             toast.error(state.message)
         }
@@ -25,8 +23,8 @@ export default function newPostPage() {
 
     return (
         <form action={formAction} className="flex flex-col m-5">
-            <input type="text" name="title" placeholder="Title" className="border-white border-2" minLength={5} required></input>
-            <textarea name="content" placeholder="content" minLength={20} required></textarea>
+            <input type="text" name="title" placeholder="Title" className="border-white border-2" minLength={5} required defaultValue={(state.formData?.get("title") || "") as string}></input>
+            <textarea name="content" placeholder="content" minLength={20} required defaultValue={(state.formData?.get("content") || "") as string}></textarea>
             <button type="submit">Save</button>
         </form>
     )
