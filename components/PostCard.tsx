@@ -13,7 +13,7 @@ export default function PostCard({ post }: PostCardProps) {
                                                      before:top-1/2
                                                      before:-translate-x-1/2
                                                      before:-translate-y-1/2
-                                                     before:h-5
+                                                     before:h-3
                                                      before:w-3
                                                      before:bg-gray-50
                                                      before:rounded-full

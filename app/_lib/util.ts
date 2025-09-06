@@ -1,3 +1,10 @@
+import { remark } from "remark";
+import remarkRehype from "remark-rehype";
+import rehypeStringify from "rehype-stringify";
+import rehypeShiki from "@shikijs/rehype";
+import rehypeFormat from "rehype-format";
+import remarkGfm from "remark-gfm";
+
 export function slugify(text: string) {
   return text
     .toLowerCase()
@@ -7,4 +14,16 @@ export function slugify(text: string) {
     .replace(/[^a-z0-9-]/g, "")
     .replace(/--+/g, "-")
     .replace(/^-+|-+$/g, "")
+}
+
+export async function markdownToHtml(markdown: string) {
+  const result = await remark()
+    .use(remarkGfm)
+    .use(remarkRehype)
+    .use(rehypeShiki, { themes: { light: "github-dark", dark: "github-dark" } })
+    .use(rehypeFormat)
+    .use(rehypeStringify)
+    .process(markdown);
+    
+  return result.toString();
 }
