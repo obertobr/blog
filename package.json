@@ -10,6 +10,7 @@
     "studio": "npx prisma studio"
   },
   "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
     "@prisma/client": "^6.15.0",
     "@shikijs/rehype": "^3.12.2",
     "@tailwindcss/line-clamp": "^0.4.4",
@@ -23,6 +24,7 @@
     "rehype-shiki": "^0.0.9",
     "rehype-stringify": "^10.0.1",
     "remark": "^15.0.1",
+    "remark-breaks": "^4.0.0",
     "remark-gfm": "^4.0.1",
     "remark-rehype": "^11.1.2",
     "shiki": "^3.12.2"

@@ -7,13 +7,16 @@ export async function createPostAction(initialState: any, formData: FormData) {
     const slug = slugify(title)
     const content = formData.get("content") as string
 
+    console.log(title)
+    console.log(content)
+
     try{
         const post = await createPost(title, content, slug)
-        return { ...initialState, slug: post.slug }
+        const message = "Post created"
+        return { ...initialState, message, slug: post.slug }
     } catch(err: any){
         const message = err.message
 
         return { ...initialState, message, formData }
     }
-
 }
