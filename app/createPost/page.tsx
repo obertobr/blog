@@ -8,6 +8,8 @@ import { createPostAction } from "../_lib/actions"
 import Editor from "@monaco-editor/react";
 import { markdownToHtml } from "../_lib/util"
 import { editor } from "monaco-editor"
+import CreatableSelect from 'react-select/creatable';
+import { getTags } from "../_lib/posts"
 
 const optionsEditor: editor.IStandaloneEditorConstructionOptions = {
     fontSize: 14,
@@ -32,20 +34,22 @@ export default function createPostTest() {
     const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
     const [state, formAction, pending] = useActionState(createPostAction, initialState);
 
-    const [title, setTitle] = useState(state.formData?.get("title") || "");
-    const [content, setContent] = useState(state.formData?.get("content") || "");
-    const [tags, setTags] = useState(state.formData?.get("tags") || "");
+    const [title, setTitle] = useState(state.title || "");
+    const [content, setContent] = useState(state.content || "");
+    const [tags, setTags] = useState(state.tags || []);
 
     const [settingsOpen, settingsSetOpen] = useState(false);
     const [assetsOpen, assetsSetOpen] = useState(false);
 
+    const [allTags, setAllTags] = useState<{ value: string; label: string }[]>([]);
+
     const handleSendForm = () => {
         startTransition(() => {
-            const fd = new FormData();
-            fd.append("title", title);
-            fd.append("content", content);
-            fd.append("tags", tags);
-            formAction(fd);
+            formAction({
+                title,
+                content,
+                tags
+            })
         });
     };
 
@@ -59,13 +63,18 @@ export default function createPostTest() {
     }
 
     async function handleEditorChange(value: string | undefined) {
-        if (value) {
-            setContent(value);
-            await convert(value);
-        }
+        setContent(value);
+        await convert(value || "");
     }
 
     useEffect(() => {
+        const listTags = async () => {
+            const tags = await getTags()
+            setAllTags(tags.map(tag => ({ value: tag.id.toString(), label: tag.name })))
+        }
+
+        listTags()
+
         const edit = document.getElementById("edit");
         if (edit) {
             markdown()
@@ -102,7 +111,6 @@ export default function createPostTest() {
             <div id="container" className="flex w-full h-full bg-white border-b border-gray-200">
                 <div id="edit" className="w-1/2 m-0 p-0 whitespace-nowrap align-top h-full">
                     <div id="editor-wrapper" className="h-full">
-                        {/* <div id="editor" className="h-full"></div> */}
                         <Editor
                             language="markdown"
                             options={optionsEditor}
@@ -133,12 +141,16 @@ export default function createPostTest() {
                 <div className="p-2">
                     <div>
                         <label htmlFor="post-title" className="block text-sm font-medium text-slate-600 mb-1">Título do Post</label>
-                        <input type="text" id="post-title" placeholder="O Guia Definitivo para..." className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition" value={title} onChange={(e) => { setTitle(e.target.value) }} />
+                        <input type="text" id="post-title" placeholder="Título do Post" className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition" value={title} onChange={(e) => { setTitle(e.target.value) }} />
                     </div>
                     <div>
                         <label htmlFor="post-tags" className="block text-sm font-medium text-slate-600 mb-1">Tags</label>
-                        <input type="text" id="post-tags" placeholder="tecnologia, blog, design" className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition" value={tags} onChange={(e) => { setTags(e.target.value) }} />
-                        <p className="text-xs text-slate-400 mt-1">Separe as tags por vírgula.</p>
+                        <CreatableSelect
+                            instanceId="tag"
+                            isMulti
+                            options={allTags}
+                            onChange={(tags) => setTags(tags.map(tag => tag.value))}
+                        />
                     </div>
                 </div>
             </div>

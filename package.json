@@ -20,6 +20,7 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-hot-toast": "^2.6.0",
+    "react-select": "^5.10.2",
     "rehype-format": "^5.0.1",
     "rehype-shiki": "^0.0.9",
     "rehype-stringify": "^10.0.1",
