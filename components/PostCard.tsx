@@ -1,8 +1,12 @@
-import { Post } from "@/app/generated/prisma"
+import { Prisma } from "@/app/generated/prisma";
 import Link from "next/link"
 
+export type PostWithTags = Prisma.PostGetPayload<{
+  include: { tags: true }
+}>;
+
 type PostCardProps = {
-    post: Post
+    post: PostWithTags
 }
 
 export default function PostCard({ post }: PostCardProps) {
@@ -31,9 +35,9 @@ export default function PostCard({ post }: PostCardProps) {
                 <div className="flex justify-between items-center">
                     <span className='text-sm text-gray-500'>{post.createdAt.toDateString()}</span>
                     <div className="flex gap-2">
-                        <span className="bg-gray-300 text-xs font-medium px-2.5 py-0.5 rounded-full">nodejs</span>
-                        <span className="bg-gray-300 text-xs font-medium px-2.5 py-0.5 rounded-full">nodejs</span>
-                        <span className="bg-gray-300 text-xs font-medium px-2.5 py-0.5 rounded-full">nodejs</span>
+                        {post.tags?.map(tag => (
+                            <span className="bg-gray-300 text-xs font-medium px-2.5 py-0.5 rounded-full" key={tag.id}>{tag.name}</span>
+                        ))}
                     </div>
                 </div>
                 <h2 className='text-2xl font-bold'>{post.title}</h2>
