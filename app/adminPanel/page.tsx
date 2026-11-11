@@ -2,7 +2,7 @@
 
 import { startTransition, useActionState, useEffect, useRef, useState } from "react";
 import { getTags } from "../_lib/posts";
-import { Tag } from "../generated/prisma";
+import { Tag } from "@prisma/client";
 import { deleteTagAction, saveTagAction } from "../_lib/actions";
 import toast from "react-hot-toast"
 
@@ -55,8 +55,9 @@ export default function AdminPanel() {
     };
 
     useEffect(() => {
+        const timers = debounceTimers.current;
         return () => {
-            Object.values(debounceTimers.current).forEach(clearTimeout);
+            Object.values(timers).forEach(clearTimeout);
         };
     }, []);
 

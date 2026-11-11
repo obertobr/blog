@@ -1,4 +1,4 @@
-import { Prisma } from "@/app/generated/prisma";
+import { Prisma } from "@prisma/client";
 import Link from "next/link"
 
 export type PostWithTags = Prisma.PostGetPayload<{

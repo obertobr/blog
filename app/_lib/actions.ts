@@ -3,7 +3,6 @@ import path from "path";
 import { createPost, createTag, deleteTag, updateTag } from "./posts"
 import { slugify } from "./util"
 import { mkdir, unlink, writeFile } from "fs/promises"
-import { Tag } from "../generated/prisma";
 
 export type formPost = {
     title: string;
