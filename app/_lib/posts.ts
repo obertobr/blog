@@ -60,9 +60,8 @@ export async function createPost(title: string, content: string, slug: string, t
                 } : {})
             }
         })
-    } catch (err: any) {
-        if (err.code === "P2002") {
-            console.log(err.meta)
+    } catch (err: unknown) {
+        if (typeof err === "object" && err !== null && "code" in err && (err as { code: string }).code === "P2002") {
             throw new Error("Slug already exists")
         }
         throw new Error("Error creating post");

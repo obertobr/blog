@@ -12,7 +12,13 @@ export type formPost = {
     slug?: string;
 }
 
-export async function createPostAction(initialState: any, formPost: formPost) {
+export type FormPostState = {
+    message: string;
+    slug?: string | null;
+    formPost?: formPost;
+}
+
+export async function createPostAction(initialState: FormPostState, formPost: formPost): Promise<FormPostState> {
     const title = formPost.title
     const slug = slugify(title)
     const content = formPost.content
@@ -22,15 +28,15 @@ export async function createPostAction(initialState: any, formPost: formPost) {
         const post = await createPost(title, content, slug, tags)
         const message = "Post created"
         return { ...initialState, message, slug: post.slug }
-    } catch (err: any) {
-        const message = err.message
+    } catch (err) {
+        const message = err instanceof Error ? err.message : "Error creating post"
 
         return { ...initialState, message, formPost }
     }
 }
 
 
-export async function saveAssetAction(_: any, fileList: FileList) {
+export async function saveAssetAction(_: unknown, fileList: FileList) {
     const uploadDir = path.join(process.cwd(), "public", "assets")
     await mkdir(uploadDir, { recursive: true })
 
@@ -48,8 +54,9 @@ export async function saveAssetAction(_: any, fileList: FileList) {
             await writeFile(filePath, buffer)
 
             assetsLoaded.push(`/assets/${fileName}`)
-        } catch (err: any) {
-            errors.push(`Image: ${file.name} Error: ${err.message}`)
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : "Unknown error"
+            errors.push(`Image: ${file.name} Error: ${errorMessage}`)
         }
     }
 
@@ -59,7 +66,7 @@ export async function saveAssetAction(_: any, fileList: FileList) {
     }
 }
 
-export async function deleteAssetAction(_: any, filePath: string) {
+export async function deleteAssetAction(_: unknown, filePath: string) {
     try {
         const fileName = path.basename(filePath)
         const fullPath = path.join(process.cwd(), "public", "assets", fileName)
@@ -76,7 +83,7 @@ export async function deleteAssetAction(_: any, filePath: string) {
     }
 }
 
-export async function saveTagAction(_: any, tag: { id?: number; name: string; color?: string | null }) {
+export async function saveTagAction(_: unknown, tag: { id?: number; name: string; color?: string | null }) {
     try {
         let savedTag
         if (tag.id) {
@@ -89,15 +96,15 @@ export async function saveTagAction(_: any, tag: { id?: number; name: string; co
             message: `Tag ${savedTag.name} saved`,
             tag: savedTag
         }
-    } catch (err: any) {
-        if (err.code === "P2002") {
+    } catch (err: unknown) {
+        if (typeof err === "object" && err !== null && "code" in err && (err as { code: string }).code === "P2002") {
             return { error: "Tag with this name already exists" }
         }
         return { error: "Error saving tag" }
     }
 }
 
-export async function deleteTagAction(_: any, tag: { id: number; name?: string }) {
+export async function deleteTagAction(_: unknown, tag: { id: number; name?: string }) {
     try {
         await deleteTag(tag.id)
         return {
@@ -105,7 +112,7 @@ export async function deleteTagAction(_: any, tag: { id: number; name?: string }
             message: `Tag ${tag.name || ''} deleted`,
             tagId: tag.id
         }
-    } catch (err) {
+    } catch {
         return { error: "Error deleting tag" }
     }
 }

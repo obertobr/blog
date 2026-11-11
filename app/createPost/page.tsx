@@ -4,7 +4,7 @@ import { redirect } from "next/navigation"
 import toast from "react-hot-toast"
 import { ChangeEvent, startTransition, useActionState, useEffect, useRef, useState } from "react"
 import { markdown } from "@/app/_lib/markdown"
-import { createPostAction, deleteAssetAction, saveAssetAction } from "../_lib/actions"
+import { createPostAction, deleteAssetAction, FormPostState, saveAssetAction } from "../_lib/actions"
 import Editor from "@monaco-editor/react";
 import { markdownToHtml } from "../_lib/util"
 import { editor } from "monaco-editor"
@@ -28,7 +28,7 @@ const optionsEditor: editor.IStandaloneEditorConstructionOptions = {
     folding: false
 }
 
-const initialState = { message: '', slug: null }
+const initialState: FormPostState = { message: '', slug: null }
 
 export default function CreatePost() {
 
@@ -38,9 +38,9 @@ export default function CreatePost() {
     const [stateAsset, saveAsset] = useActionState(saveAssetAction, null);
     const [stateDelete, deleteAsset] = useActionState(deleteAssetAction, null)
 
-    const [title, setTitle] = useState(state.title || "");
-    const [content, setContent] = useState(state.content || "");
-    const [tags, setTags] = useState(state.tags || []);
+    const [title, setTitle] = useState(state.formPost?.title || "");
+    const [content, setContent] = useState(state.formPost?.content || "");
+    const [tags, setTags] = useState(state.formPost?.tags || []);
     const [previewHtml, setPreviewHtml] = useState("");
 
     const [settingsOpen, settingsSetOpen] = useState(false);
@@ -69,7 +69,7 @@ export default function CreatePost() {
     }
 
     async function handleEditorChange(value: string | undefined) {
-        setContent(value);
+        setContent(value || "");
         await convert(value || "");
     }
 
@@ -113,7 +113,7 @@ export default function CreatePost() {
         for (const error of stateAsset.errors) {
             toast.error(error)
         }
-        setAssets(assets.concat(stateAsset.assets))
+        setAssets(prev => prev.concat(stateAsset.assets))
     }, [stateAsset])
 
     useEffect(() => {
@@ -122,7 +122,7 @@ export default function CreatePost() {
                 toast.error(stateDelete?.error)
             }
         } else {
-            setAssets(assets.filter(asset => asset !== stateDelete.filePath))
+            setAssets(prev => prev.filter(asset => asset !== stateDelete.filePath))
             toast.success(stateDelete.message)
         }
     }, [stateDelete])
