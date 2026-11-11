@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
+    "set-password": "node scripts/set-password.mjs",
     "studio": "npx prisma studio"
   },
   "dependencies": {

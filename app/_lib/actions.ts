@@ -3,6 +3,7 @@ import path from "path";
 import { createPost, createTag, deleteTag, updateTag } from "./posts"
 import { slugify } from "./util"
 import { mkdir, unlink, writeFile } from "fs/promises"
+import { clearAdminSession, isAuthenticated, isValidPassword, setAdminSession } from "./auth"
 
 export type formPost = {
     title: string;
@@ -18,7 +19,29 @@ export type FormPostState = {
     formPost?: formPost;
 }
 
+export async function loginAction(_: unknown, password: string) {
+    if (!isValidPassword(password)) {
+        return { error: "Senha incorreta" }
+    }
+    await setAdminSession()
+    return { success: true }
+}
+
+export async function logoutAction() {
+    await clearAdminSession()
+    return { success: true }
+}
+
+export async function getAuthStatusAction() {
+    const authenticated = await isAuthenticated()
+    return { authenticated }
+}
+
 export async function createPostAction(initialState: FormPostState, formPost: formPost): Promise<FormPostState> {
+    if (!await isAuthenticated()) {
+        return { ...initialState, message: "Não autorizado", formPost }
+    }
+
     const title = formPost.title
     const slug = slugify(title)
     const content = formPost.content
@@ -37,6 +60,10 @@ export async function createPostAction(initialState: FormPostState, formPost: fo
 
 
 export async function saveAssetAction(_: unknown, fileList: FileList) {
+    if (!await isAuthenticated()) {
+        return { assets: [], errors: ["Não autorizado"] }
+    }
+
     const uploadDir = path.join(process.cwd(), "public", "assets")
     await mkdir(uploadDir, { recursive: true })
 
@@ -67,6 +94,10 @@ export async function saveAssetAction(_: unknown, fileList: FileList) {
 }
 
 export async function deleteAssetAction(_: unknown, filePath: string) {
+    if (!await isAuthenticated()) {
+        return { error: "Não autorizado" }
+    }
+
     try {
         const fileName = path.basename(filePath)
         const fullPath = path.join(process.cwd(), "public", "assets", fileName)
@@ -84,6 +115,10 @@ export async function deleteAssetAction(_: unknown, filePath: string) {
 }
 
 export async function saveTagAction(_: unknown, tag: { id?: number; name: string; color?: string | null }) {
+    if (!await isAuthenticated()) {
+        return { error: "Não autorizado" }
+    }
+
     try {
         let savedTag
         if (tag.id) {
@@ -105,6 +140,10 @@ export async function saveTagAction(_: unknown, tag: { id?: number; name: string
 }
 
 export async function deleteTagAction(_: unknown, tag: { id: number; name?: string }) {
+    if (!await isAuthenticated()) {
+        return { error: "Não autorizado" }
+    }
+
     try {
         await deleteTag(tag.id)
         return {
