@@ -83,7 +83,7 @@ export default function CreatePost() {
 
         const edit = document.getElementById("edit");
         if (edit) {
-            markdown()
+            return markdown()
         }
     }, [])
 

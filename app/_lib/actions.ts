@@ -2,7 +2,7 @@
 import path from "path";
 import { createPost, createTag, deleteTag, updateTag } from "./posts"
 import { slugify } from "./util"
-import { unlink, writeFile } from "fs/promises"
+import { mkdir, unlink, writeFile } from "fs/promises"
 import { Tag } from "../generated/prisma";
 
 export type formPost = {
@@ -33,20 +33,22 @@ export async function createPostAction(initialState: any, formPost: formPost) {
 
 export async function saveAssetAction(_: any, fileList: FileList) {
     const uploadDir = path.join(process.cwd(), "public", "assets")
+    await mkdir(uploadDir, { recursive: true })
 
-    let assetsLoaded: string[] = []
-    let errors: string[] = []
+    const assetsLoaded: string[] = []
+    const errors: string[] = []
 
     for (const file of fileList) {
         try {
-            const filePath = path.join(uploadDir, file.name)
+            const fileName = path.basename(file.name)
+            const filePath = path.join(uploadDir, fileName)
 
             const bytes = await file.arrayBuffer()
             const buffer = Buffer.from(bytes)
 
             await writeFile(filePath, buffer)
 
-            assetsLoaded.push(`/assets/${file.name}`)
+            assetsLoaded.push(`/assets/${fileName}`)
         } catch (err: any) {
             errors.push(`Image: ${file.name} Error: ${err.message}`)
         }
@@ -60,7 +62,8 @@ export async function saveAssetAction(_: any, fileList: FileList) {
 
 export async function deleteAssetAction(_: any, filePath: string) {
     try {
-        const fullPath = path.join(process.cwd(), "public", filePath.replace(/^\/+/, ""))
+        const fileName = path.basename(filePath)
+        const fullPath = path.join(process.cwd(), "public", "assets", fileName)
 
         await unlink(fullPath)
 
@@ -69,7 +72,7 @@ export async function deleteAssetAction(_: any, filePath: string) {
             message: `File ${filePath} deleted`,
             filePath: filePath
         }
-    } catch (err) {
+    } catch {
         return { error: "Error deleting file" }
     }
 }
