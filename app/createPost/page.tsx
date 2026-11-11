@@ -30,17 +30,18 @@ const optionsEditor: editor.IStandaloneEditorConstructionOptions = {
 
 const initialState = { message: '', slug: null }
 
-export default function createPostTest() {
+export default function CreatePost() {
 
     const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
 
-    const [state, formAction, pending] = useActionState(createPostAction, initialState);
-    const [stateAsset, saveAsset, pendingAsset] = useActionState(saveAssetAction, null);
+    const [state, formAction] = useActionState(createPostAction, initialState);
+    const [stateAsset, saveAsset] = useActionState(saveAssetAction, null);
     const [stateDelete, deleteAsset] = useActionState(deleteAssetAction, null)
 
     const [title, setTitle] = useState(state.title || "");
     const [content, setContent] = useState(state.content || "");
     const [tags, setTags] = useState(state.tags || []);
+    const [previewHtml, setPreviewHtml] = useState("");
 
     const [settingsOpen, settingsSetOpen] = useState(false);
     const [assetsOpen, assetsSetOpen] = useState(true);
@@ -59,8 +60,8 @@ export default function createPostTest() {
     };
 
     const convert = async (markdown: string) => {
-        let html = await markdownToHtml(markdown)
-        document.querySelector('#output')!.innerHTML = html;
+        const html = await markdownToHtml(markdown)
+        setPreviewHtml(html);
     };
 
     function handleEditorDidMount(editor: editor.IStandaloneCodeEditor) {
@@ -159,7 +160,7 @@ export default function createPostTest() {
 
                 <div id="preview" className="w-1/2 m-0 p-0 whitespace-normal align-top h-full overflow-y-scroll">
                     <div id="preview-wrapper" className="px-4 pt-2 pb-4">
-                        <div id="output" className="content markdown-body prose max-w-none prose-hr:mt-3 prose-hr:mb-3"></div>
+                        <div id="output" className="content markdown-body prose max-w-none prose-hr:mt-3 prose-hr:mb-3" dangerouslySetInnerHTML={{ __html: previewHtml }}></div>
                     </div>
                 </div>
             </div>
