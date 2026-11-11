@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation"
 import toast from "react-hot-toast"
-import { ChangeEvent, startTransition, useActionState, useEffect, useRef, useState } from "react"
+import { ChangeEvent, startTransition, useActionState, useCallback, useEffect, useRef, useState } from "react"
 import { markdown } from "@/app/_lib/markdown"
 import { createPostAction, deleteAssetAction, FormPostState, saveAssetAction } from "../_lib/actions"
 import Editor from "@monaco-editor/react";
@@ -30,6 +30,36 @@ const optionsEditor: editor.IStandaloneEditorConstructionOptions = {
 
 const initialState: FormPostState = { message: '', slug: null }
 
+function isImageFile(file: File): boolean {
+    if (file.type && file.type.startsWith("image/")) return true;
+    return /\.(png|jpe?g|gif|webp|svg|avif|bmp)$/i.test(file.name);
+}
+
+function getImagesFromDataTransfer(data: DataTransfer | null): File[] {
+    if (!data) return [];
+    const files: File[] = [];
+    if (data.items && data.items.length > 0) {
+        for (let i = 0; i < data.items.length; i++) {
+            const item = data.items[i];
+            if (item.kind === "file") {
+                const file = item.getAsFile();
+                if (file && isImageFile(file)) {
+                    files.push(file);
+                }
+            }
+        }
+    }
+    if (files.length === 0 && data.files && data.files.length > 0) {
+        for (let i = 0; i < data.files.length; i++) {
+            const file = data.files[i];
+            if (isImageFile(file)) {
+                files.push(file);
+            }
+        }
+    }
+    return files;
+}
+
 export default function CreatePost() {
 
     const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
@@ -48,6 +78,83 @@ export default function CreatePost() {
 
     const [allTags, setAllTags] = useState<{ value: string; label: string }[]>([]);
     const [assets, setAssets] = useState<string[]>([]);
+    const [isDragging, setIsDragging] = useState(false);
+
+    const convert = useCallback(async (markdown: string) => {
+        const html = await markdownToHtml(markdown)
+        setPreviewHtml(html);
+    }, []);
+
+    const uploadAndInsertImages = useCallback(async (files: File[]) => {
+        const imageFiles = files.filter(f => f.type.startsWith("image/"));
+        if (imageFiles.length === 0) return;
+
+        const toastId = toast.loading("Enviando imagem...");
+        try {
+            const result = await saveAssetAction(null, imageFiles);
+
+            if (result.errors && result.errors.length > 0) {
+                for (const err of result.errors) {
+                    toast.error(err);
+                }
+            }
+
+            if (result.assets && result.assets.length > 0) {
+                setAssets(prev => prev.concat(result.assets));
+
+                const markdownLines = result.assets.map(assetUrl => {
+                    const rawName = decodeURIComponent(assetUrl.split('/').pop() || '');
+                    const baseName = rawName.replace(/\.[^/.]+$/, "");
+                    const cleanAlt = baseName.replace(/-[a-f0-9]{8}$/i, "").replace(/-/g, " ");
+                    return `![${cleanAlt || "imagem"}](${encodeURI(assetUrl)})\n`;
+                }).join("\n");
+
+                if (editorRef.current) {
+                    const editor = editorRef.current;
+                    const selection = editor.getSelection();
+                    if (selection) {
+                        editor.executeEdits("insert-image", [{
+                            range: selection,
+                            text: markdownLines,
+                            forceMoveMarkers: true,
+                        }]);
+                    } else {
+                        const model = editor.getModel();
+                        if (model) {
+                            const lineCount = model.getLineCount();
+                            const lastLineLength = model.getLineMaxColumn(lineCount);
+                            editor.executeEdits("insert-image", [{
+                                range: {
+                                    startLineNumber: lineCount,
+                                    startColumn: lastLineLength,
+                                    endLineNumber: lineCount,
+                                    endColumn: lastLineLength,
+                                },
+                                text: `\n${markdownLines}`,
+                                forceMoveMarkers: true,
+                            }]);
+                        }
+                    }
+                    editor.focus();
+                    const updated = editor.getValue();
+                    setContent(updated);
+                    await convert(updated);
+                } else {
+                    setContent(prev => {
+                        const updated = prev ? `${prev}\n\n${markdownLines}` : markdownLines;
+                        convert(updated);
+                        return updated;
+                    });
+                }
+
+                toast.success("Imagem adicionada com sucesso!", { id: toastId });
+            } else {
+                toast.dismiss(toastId);
+            }
+        } catch {
+            toast.error("Erro ao enviar imagem", { id: toastId });
+        }
+    }, [convert]);
 
     const handleSendForm = () => {
         startTransition(() => {
@@ -60,13 +167,48 @@ export default function CreatePost() {
         });
     };
 
-    const convert = async (markdown: string) => {
-        const html = await markdownToHtml(markdown)
-        setPreviewHtml(html);
-    };
-
     function handleEditorDidMount(editor: editor.IStandaloneCodeEditor) {
         editorRef.current = editor;
+
+        const domNode = editor.getDomNode();
+        if (domNode) {
+            const handlePaste = (e: ClipboardEvent) => {
+                const imageFiles = getImagesFromDataTransfer(e.clipboardData);
+                if (imageFiles.length > 0) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    uploadAndInsertImages(imageFiles);
+                }
+            };
+
+            domNode.addEventListener("paste", handlePaste, true);
+            const textarea = domNode.querySelector("textarea");
+            if (textarea) {
+                textarea.addEventListener("paste", handlePaste, true);
+            }
+
+            domNode.addEventListener("dragover", (e: DragEvent) => {
+                if (e.dataTransfer?.types?.includes("Files")) {
+                    e.preventDefault();
+                    setIsDragging(true);
+                }
+            });
+
+            domNode.addEventListener("dragleave", (e: DragEvent) => {
+                e.preventDefault();
+                setIsDragging(false);
+            });
+
+            domNode.addEventListener("drop", (e: DragEvent) => {
+                setIsDragging(false);
+                const imageFiles = getImagesFromDataTransfer(e.dataTransfer);
+                if (imageFiles.length > 0) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    uploadAndInsertImages(imageFiles);
+                }
+            });
+        }
     }
 
     async function handleEditorChange(value: string | undefined) {
@@ -89,6 +231,25 @@ export default function CreatePost() {
     }, [])
 
     useEffect(() => {
+        const handleGlobalPaste = (e: ClipboardEvent) => {
+            const target = e.target as HTMLElement | null;
+            if (target && target.tagName === "INPUT" && target.id === "post-title") {
+                return;
+            }
+
+            const imageFiles = getImagesFromDataTransfer(e.clipboardData);
+            if (imageFiles.length > 0) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                uploadAndInsertImages(imageFiles);
+            }
+        };
+
+        window.addEventListener("paste", handleGlobalPaste, true);
+        return () => window.removeEventListener("paste", handleGlobalPaste, true);
+    }, [uploadAndInsertImages]);
+
+    useEffect(() => {
         if (!state) return
 
         if (state.slug) {
@@ -107,6 +268,26 @@ export default function CreatePost() {
             }
         });
     }
+
+    const handleDeleteAsset = (url: string) => {
+        const fileName = url.split('/').pop() || '';
+        const decoded = decodeURIComponent(fileName);
+        const encoded = encodeURI(fileName);
+
+        if (
+            content.includes(fileName) ||
+            content.includes(decoded) ||
+            content.includes(encoded) ||
+            content.includes(url)
+        ) {
+            toast.error("Não é possível excluir: a imagem está sendo usada no texto do editor. Remova-a do texto antes de excluir.");
+            return;
+        }
+
+        startTransition(() => {
+            deleteAsset(url);
+        });
+    };
 
     useEffect(() => {
         if (!stateAsset) return
@@ -144,7 +325,36 @@ export default function CreatePost() {
                     </button>
                 </div>
             </div>
-            <div id="container" className="flex w-full h-full bg-white border-b border-gray-200">
+            <div
+                id="container"
+                onDragOver={(e) => {
+                    if (e.dataTransfer?.types?.includes("Files")) {
+                        e.preventDefault();
+                        setIsDragging(true);
+                    }
+                }}
+                onDragLeave={(e) => {
+                    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                        setIsDragging(false);
+                    }
+                }}
+                onDrop={(e) => {
+                    setIsDragging(false);
+                    const imageFiles = getImagesFromDataTransfer(e.dataTransfer);
+                    if (imageFiles.length > 0) {
+                        e.preventDefault();
+                        uploadAndInsertImages(imageFiles);
+                    }
+                }}
+                className="flex w-full h-full bg-white border-b border-gray-200 relative"
+            >
+                {isDragging && (
+                    <div className="absolute inset-0 bg-sky-500/10 border-2 border-dashed border-sky-500 z-40 flex items-center justify-center pointer-events-none backdrop-blur-[1px]">
+                        <span className="bg-white px-4 py-2 rounded-lg shadow-md text-sky-700 font-semibold text-base border border-sky-200">
+                            Solte a imagem aqui para adicionar ao post
+                        </span>
+                    </div>
+                )}
                 <div id="edit" className="w-1/2 m-0 p-0 whitespace-nowrap align-top h-full">
                     <div id="editor-wrapper" className="h-full">
                         <Editor
@@ -202,7 +412,7 @@ export default function CreatePost() {
                         <button className="w-full cursor-pointer flex items-center justify-center h-full p-2 hover:bg-sky-100 transition">Reutilizar imagem</button>
                     </div>
                     {assets.map((asset, index) => (
-                        <Asset key={index} url={asset} onDelete={(url) => {startTransition(() => {deleteAsset(url)})}} />
+                        <Asset key={index} url={asset} onDelete={handleDeleteAsset} />
                     ))}
                 </div>
             </div>

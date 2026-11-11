@@ -79,7 +79,7 @@ export async function createPostAction(initialState: FormPostState, formPost: fo
 }
 
 
-export async function saveAssetAction(_: unknown, fileList: FileList) {
+export async function saveAssetAction(_: unknown, fileList: FileList | File[]) {
     if (!await isAuthenticated()) {
         return { assets: [], errors: ["Não autorizado"] }
     }
@@ -94,7 +94,17 @@ export async function saveAssetAction(_: unknown, fileList: FileList) {
 
     for (const file of fileList) {
         try {
-            const ext = path.extname(file.name).toLowerCase()
+            let ext = path.extname(file.name).toLowerCase()
+            if (!ext && file.type) {
+                if (file.type.includes("jpeg") || file.type.includes("jpg")) ext = ".jpg"
+                else if (file.type.includes("png")) ext = ".png"
+                else if (file.type.includes("gif")) ext = ".gif"
+                else if (file.type.includes("webp")) ext = ".webp"
+                else if (file.type.includes("svg")) ext = ".svg"
+                else if (file.type.includes("avif")) ext = ".avif"
+            }
+            if (!ext) ext = ".png"
+
             if (!allowedExtensions.includes(ext)) {
                 errors.push(`Arquivo "${file.name}" não é uma imagem suportada.`)
                 continue
@@ -105,8 +115,9 @@ export async function saveAssetAction(_: unknown, fileList: FileList) {
                 continue
             }
 
-            const rawBase = path.basename(file.name, ext)
-            const safeBase = slugify(rawBase) || "asset"
+            const rawBase = path.basename(file.name, path.extname(file.name))
+            const cleanBase = rawBase === "blob" || rawBase === "image" ? "imagem" : rawBase
+            const safeBase = slugify(cleanBase) || "imagem"
             const uniqueSuffix = crypto.randomBytes(4).toString("hex")
             const fileName = `${safeBase}-${uniqueSuffix}${ext}`
             const filePath = path.join(uploadDir, fileName)
@@ -136,17 +147,23 @@ export async function deleteAssetAction(_: unknown, filePath: string) {
 
     try {
         const fileName = path.basename(filePath)
-        const fullPath = path.join(process.cwd(), "public", "assets", fileName)
+        const decoded = decodeURIComponent(fileName)
 
+        const isUsed = (await isAssetUsedInOtherPosts(fileName)) || (await isAssetUsedInOtherPosts(decoded))
+        if (isUsed) {
+            return { error: "Esta imagem está sendo usada em um post e não pode ser excluída." }
+        }
+
+        const fullPath = path.join(process.cwd(), "public", "assets", fileName)
         await unlink(fullPath)
 
         return {
             success: true,
-            message: `File ${filePath} deleted`,
+            message: `Imagem ${fileName} excluída com sucesso`,
             filePath: filePath
         }
     } catch {
-        return { error: "Error deleting file" }
+        return { error: "Erro ao excluir imagem" }
     }
 }
 

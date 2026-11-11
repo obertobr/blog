@@ -208,12 +208,22 @@ describe("deleteAssetAction", () => {
     });
 
     it("sanitizes file path to prevent directory traversal", async () => {
+        vi.mocked(postsModule.isAssetUsedInOtherPosts).mockResolvedValue(false);
         vi.mocked(unlink).mockResolvedValue();
 
         const result = await deleteAssetAction(null, "../../malicious.png");
 
         expect(result.success).toBe(true);
         expect(unlink).toHaveBeenCalledWith(expect.stringMatching(/[\\/]public[\\/]assets[\\/]malicious\.png$/));
+    });
+
+    it("blocks asset deletion if it is used in a post", async () => {
+        vi.mocked(postsModule.isAssetUsedInOtherPosts).mockResolvedValue(true);
+
+        const result = await deleteAssetAction(null, "/assets/foto.png");
+
+        expect(result.error).toBe("Esta imagem está sendo usada em um post e não pode ser excluída.");
+        expect(unlink).not.toHaveBeenCalled();
     });
 });
 
@@ -256,6 +266,21 @@ describe("saveAssetAction", () => {
 
         expect(result.assets).toHaveLength(0);
         expect(result.errors).toContain('Arquivo "script.sh" não é uma imagem suportada.');
+    });
+
+    it("accepts clipboard blob images without extension (like MS Paint)", async () => {
+        const mockClipboardBlob = {
+            name: "blob",
+            type: "image/png",
+            size: 1024,
+            arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(8)),
+        } as unknown as File;
+
+        const result = await saveAssetAction(null, [mockClipboardBlob]);
+
+        expect(result.assets).toHaveLength(1);
+        expect(result.assets[0]).toMatch(/^\/assets\/imagem-[a-f0-9]{8}\.png$/);
+        expect(result.errors).toHaveLength(0);
     });
 });
 
