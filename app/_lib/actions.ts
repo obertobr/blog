@@ -1,8 +1,9 @@
 'use server'
 import path from "path";
-import { createPost } from "./posts"
+import { createPost, createTag, deleteTag, updateTag } from "./posts"
 import { slugify } from "./util"
 import { unlink, writeFile } from "fs/promises"
+import { Tag } from "../generated/prisma";
 
 export type formPost = {
     title: string;
@@ -70,5 +71,39 @@ export async function deleteAssetAction(_: any, filePath: string) {
         }
     } catch (err) {
         return { error: "Error deleting file" }
+    }
+}
+
+export async function saveTagAction(_: any, tag: { id?: number; name: string; color?: string | null }) {
+    try {
+        let savedTag
+        if (tag.id) {
+            savedTag = await updateTag(tag.id, { name: tag.name, color: tag.color })
+        } else {
+            savedTag = await createTag(tag.name, tag.color)
+        }
+        return {
+            success: true,
+            message: `Tag ${savedTag.name} saved`,
+            tag: savedTag
+        }
+    } catch (err: any) {
+        if (err.code === "P2002") {
+            return { error: "Tag with this name already exists" }
+        }
+        return { error: "Error saving tag" }
+    }
+}
+
+export async function deleteTagAction(_: any, tag: { id: number; name?: string }) {
+    try {
+        await deleteTag(tag.id)
+        return {
+            success: true,
+            message: `Tag ${tag.name || ''} deleted`,
+            tagId: tag.id
+        }
+    } catch (err) {
+        return { error: "Error deleting tag" }
     }
 }

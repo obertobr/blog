@@ -16,7 +16,30 @@ export async function getTags() {
 
 export async function getPostBySlug(slug: string) {
     return await prisma.post.findUnique({
-        where: { slug }
+        where: { slug },
+        include: { tags: true }
+    })
+}
+
+export async function createTag(name: string, color?: string | null) {
+    return await prisma.tag.create({
+        data: {
+            name,
+            color
+        }
+    })
+}
+
+export async function updateTag(id: number, data: { name?: string; color?: string | null }) {
+    return await prisma.tag.update({
+        where: { id },
+        data
+    })
+}
+
+export async function deleteTag(id: number) {
+    return await prisma.tag.delete({
+        where: { id }
     })
 }
 

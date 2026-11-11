@@ -75,7 +75,7 @@ export default function createPostTest() {
     useEffect(() => {
         const listTags = async () => {
             const tags = await getTags()
-            setAllTags(tags.map(tag => ({ value: tag.id.toString(), label: tag.name })))
+            setAllTags(tags.map(tag => ({ value: tag.name, label: tag.name })))
         }
 
         listTags()

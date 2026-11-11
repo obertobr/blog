@@ -36,7 +36,13 @@ export default function PostCard({ post }: PostCardProps) {
                     <span className='text-sm text-gray-500'>{post.createdAt.toDateString()}</span>
                     <div className="flex gap-2">
                         {post.tags?.map(tag => (
-                            <span className="bg-gray-300 text-xs font-medium px-2.5 py-0.5 rounded-full" key={tag.id}>{tag.name}</span>
+                            <span
+                                className="text-xs font-medium px-2.5 py-0.5 rounded-full"
+                                style={{ backgroundColor: tag.color || '#d1d5dc' }}
+                                key={tag.id}
+                            >
+                                {tag.name}
+                            </span>
                         ))}
                     </div>
                 </div>
