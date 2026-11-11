@@ -45,3 +45,7 @@ next-env.d.ts
 #prisma
 /app/generated/prisma
 /prisma/prod.db
+
+# uploaded assets
+/public/assets/*
+!/public/assets/.gitkeep

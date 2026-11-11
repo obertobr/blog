@@ -5,15 +5,24 @@ type AssetProps = {
     onDelete: (url: string) => void
 }
 
+function getAltFromUrl(url: string): string {
+    const rawName = decodeURIComponent(url.split('/').pop() || '');
+    const baseName = rawName.replace(/\.[^/.]+$/, "");
+    const cleanAlt = baseName.replace(/-[a-f0-9]{8}$/i, "").replace(/-\d{6}$/, "").replace(/-/g, " ");
+    return cleanAlt || "imagem";
+}
+
 export default function Asset({ url, onDelete }: AssetProps) {
+    const altText = getAltFromUrl(url);
+
     const handleCopy = () => {
-        navigator.clipboard.writeText(`![imagem](${url})`);
+        navigator.clipboard.writeText(`![${altText}](${encodeURI(url)})`);
         toast.success("Markdown copiado!");
     };
 
     return (
         <div className="relative aspect-square rounded-lg overflow-hidden border-2 border-gray-400 flex-shrink-0">
-            <img className="w-full h-full object-cover object-center" src={url} alt="Uploaded asset" />
+            <img className="w-full h-full object-cover object-center" src={url} alt={altText} />
             <button
                 type="button"
                 onClick={handleCopy}

@@ -54,7 +54,8 @@ export default function CreatePost() {
             formAction({
                 title,
                 content,
-                tags
+                tags,
+                assets
             })
         });
     };

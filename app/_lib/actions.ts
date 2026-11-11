@@ -1,7 +1,8 @@
 'use server'
 import path from "path";
-import { createPost, createTag, deleteTag, updateTag } from "./posts"
-import { slugify } from "./util"
+import crypto from "crypto";
+import { createPost, createTag, deletePost, deleteTag, getPostById, isAssetUsedInOtherPosts, updateTag } from "./posts"
+import { extractAssetUrls, slugify } from "./util"
 import { mkdir, unlink, writeFile } from "fs/promises"
 import { clearAdminSession, isAuthenticated, isValidPassword, setAdminSession } from "./auth"
 
@@ -11,6 +12,7 @@ export type formPost = {
     tags: string[];
     description?: string;
     slug?: string;
+    assets?: string[];
 }
 
 export type FormPostState = {
@@ -47,6 +49,24 @@ export async function createPostAction(initialState: FormPostState, formPost: fo
     const content = formPost.content
     const tags = formPost.tags
 
+    if (formPost.assets && formPost.assets.length > 0) {
+        const unusedAssets = formPost.assets.filter(assetUrl => {
+            const fileName = path.basename(assetUrl)
+            const decoded = decodeURIComponent(fileName)
+            const encoded = encodeURI(fileName)
+            return !content.includes(fileName) && !content.includes(decoded) && !content.includes(encoded) && !content.includes(assetUrl)
+        })
+
+        if (unusedAssets.length > 0) {
+            const names = unusedAssets.map(a => path.basename(decodeURIComponent(a))).join(", ")
+            return {
+                ...initialState,
+                message: `Não é permitido publicar: as seguintes imagens foram enviadas mas não estão no conteúdo: ${names}`,
+                formPost
+            }
+        }
+    }
+
     try {
         const post = await createPost(title, content, slug, tags)
         const message = "Post created"
@@ -70,9 +90,25 @@ export async function saveAssetAction(_: unknown, fileList: FileList) {
     const assetsLoaded: string[] = []
     const errors: string[] = []
 
+    const allowedExtensions = [".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".avif"]
+
     for (const file of fileList) {
         try {
-            const fileName = path.basename(file.name)
+            const ext = path.extname(file.name).toLowerCase()
+            if (!allowedExtensions.includes(ext)) {
+                errors.push(`Arquivo "${file.name}" não é uma imagem suportada.`)
+                continue
+            }
+
+            if (file.size > 10 * 1024 * 1024) {
+                errors.push(`Imagem "${file.name}" excede o limite máximo de 10MB.`)
+                continue
+            }
+
+            const rawBase = path.basename(file.name, ext)
+            const safeBase = slugify(rawBase) || "asset"
+            const uniqueSuffix = crypto.randomBytes(4).toString("hex")
+            const fileName = `${safeBase}-${uniqueSuffix}${ext}`
             const filePath = path.join(uploadDir, fileName)
 
             const bytes = await file.arrayBuffer()
@@ -153,5 +189,43 @@ export async function deleteTagAction(_: unknown, tag: { id: number; name?: stri
         }
     } catch {
         return { error: "Error deleting tag" }
+    }
+}
+
+export async function deletePostAction(_: unknown, id: number) {
+    if (!await isAuthenticated()) {
+        return { error: "Não autorizado" }
+    }
+
+    try {
+        const post = await getPostById(id)
+        if (!post) {
+            return { error: "Post não encontrado" }
+        }
+
+        const assetNames = extractAssetUrls(post.content || "")
+        await deletePost(id)
+
+        const uploadDir = path.join(process.cwd(), "public", "assets")
+        for (const assetName of assetNames) {
+            const isUsedElsewhere = await isAssetUsedInOtherPosts(assetName, id)
+            if (!isUsedElsewhere) {
+                const safeName = path.basename(assetName)
+                const filePath = path.join(uploadDir, safeName)
+                try {
+                    await unlink(filePath)
+                } catch {
+                    // Arquivo já removido ou não encontrado
+                }
+            }
+        }
+
+        return {
+            success: true,
+            message: "Post excluído com sucesso",
+            postId: id
+        }
+    } catch {
+        return { error: "Erro ao excluir post" }
     }
 }

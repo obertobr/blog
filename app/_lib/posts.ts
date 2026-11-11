@@ -21,6 +21,33 @@ export async function getPostBySlug(slug: string) {
     })
 }
 
+export async function getPostById(id: number) {
+    return await prisma.post.findUnique({
+        where: { id },
+        include: { tags: true }
+    })
+}
+
+export async function deletePost(id: number) {
+    return await prisma.post.delete({
+        where: { id }
+    })
+}
+
+export async function isAssetUsedInOtherPosts(fileName: string, excludePostId?: number): Promise<boolean> {
+    const encoded = encodeURI(fileName);
+    const count = await prisma.post.count({
+        where: {
+            ...(excludePostId ? { id: { not: excludePostId } } : {}),
+            OR: [
+                { content: { contains: fileName } },
+                { content: { contains: encoded } },
+            ],
+        },
+    });
+    return count > 0;
+}
+
 export async function createTag(name: string, color?: string | null) {
     return await prisma.tag.create({
         data: {
