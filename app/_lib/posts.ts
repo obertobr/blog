@@ -1,6 +1,14 @@
 'use server'
 
 import prisma from "./prisma";
+import {
+    COMMENT_BURST_MAX_COUNT,
+    COMMENT_DUPLICATE_WINDOW_MS,
+    CommentErrorCode,
+    evaluateCommentRateLimit,
+    PreparedComment,
+    PublicComment,
+} from "./comment";
 
 function buildPostInclude(visitorHash?: string | null) {
     return {
@@ -243,4 +251,176 @@ export async function recordPostRead(postId: number, visitorHash: string): Promi
             readCount: 1,
         },
     });
+}
+
+function toPublicComment(
+    row: {
+        id: number;
+        postId: number;
+        authorName: string | null;
+        isAnonymous: boolean;
+        content: string;
+        createdAt: Date;
+        visitor: { hash: string };
+    },
+    visitorHash?: string | null
+): PublicComment {
+    return {
+        id: row.id,
+        postId: row.postId,
+        authorName: row.isAnonymous ? null : row.authorName,
+        isAnonymous: row.isAnonymous,
+        content: row.content,
+        createdAt: row.createdAt.toISOString(),
+        isOwn: Boolean(visitorHash && row.visitor.hash === visitorHash),
+    };
+}
+
+export async function getPostComments(postId: number, visitorHash?: string | null): Promise<PublicComment[]> {
+    const rows = await prisma.comment.findMany({
+        where: { postId },
+        orderBy: { createdAt: "desc" },
+        select: {
+            id: true,
+            postId: true,
+            authorName: true,
+            isAnonymous: true,
+            content: true,
+            createdAt: true,
+            visitor: { select: { hash: true } },
+        },
+    });
+
+    return rows.map((row) => toPublicComment(row, visitorHash));
+}
+
+export async function getVisitorDisplayName(visitorHash?: string | null): Promise<string | null> {
+    if (!visitorHash) return null;
+    const visitor = await prisma.visitor.findUnique({
+        where: { hash: visitorHash },
+        select: { displayName: true },
+    });
+    return visitor?.displayName ?? null;
+}
+
+export type CreatePostCommentResult =
+    | { ok: true; slug: string; comment: PublicComment }
+    | { ok: false; errorCode: CommentErrorCode; retryAfterSeconds?: number };
+
+export async function createPostComment(
+    data: PreparedComment,
+    visitorHash: string
+): Promise<CreatePostCommentResult> {
+    return await prisma.$transaction(async (tx) => {
+        const post = await tx.post.findUnique({
+            where: { id: data.postId },
+            select: { id: true, slug: true, published: true },
+        });
+
+        if (!post || !post.published) {
+            return { ok: false, errorCode: CommentErrorCode.PostNotFound };
+        }
+
+        const visitor = await tx.visitor.upsert({
+            where: { hash: visitorHash },
+            update: {
+                lastSeen: new Date(),
+                ...(!data.isAnonymous && data.authorName ? { displayName: data.authorName } : {}),
+            },
+            create: {
+                hash: visitorHash,
+                ...(!data.isAnonymous && data.authorName ? { displayName: data.authorName } : {}),
+            },
+        });
+
+        const now = new Date();
+
+        const recentComments = await tx.comment.findMany({
+            where: { visitorId: visitor.id },
+            orderBy: { createdAt: "desc" },
+            take: COMMENT_BURST_MAX_COUNT,
+            select: { createdAt: true },
+        });
+
+        const rateCheck = evaluateCommentRateLimit(
+            recentComments.map((item) => item.createdAt.getTime()),
+            now.getTime()
+        );
+
+        if (!rateCheck.allowed) {
+            return {
+                ok: false,
+                errorCode: rateCheck.errorCode,
+                retryAfterSeconds: rateCheck.retryAfterSeconds,
+            };
+        }
+
+        const duplicate = await tx.comment.findFirst({
+            where: {
+                postId: post.id,
+                visitorId: visitor.id,
+                content: data.content,
+                createdAt: { gte: new Date(now.getTime() - COMMENT_DUPLICATE_WINDOW_MS) },
+            },
+            select: { id: true },
+        });
+
+        if (duplicate) {
+            return { ok: false, errorCode: CommentErrorCode.Duplicate };
+        }
+
+        const created = await tx.comment.create({
+            data: {
+                postId: post.id,
+                visitorId: visitor.id,
+                authorName: data.isAnonymous ? null : data.authorName,
+                isAnonymous: data.isAnonymous,
+                content: data.content,
+            },
+            select: {
+                id: true,
+                postId: true,
+                authorName: true,
+                isAnonymous: true,
+                content: true,
+                createdAt: true,
+                visitor: { select: { hash: true } },
+            },
+        });
+
+        return {
+            ok: true,
+            slug: post.slug,
+            comment: toPublicComment(created, visitorHash),
+        };
+    });
+}
+
+export async function deletePostComment(
+    commentId: number,
+    options: { isAdmin: boolean; visitorHash?: string | null }
+): Promise<{ ok: true; slug: string } | { ok: false; errorCode: CommentErrorCode }> {
+    const existing = await prisma.comment.findUnique({
+        where: { id: commentId },
+        select: {
+            id: true,
+            post: { select: { slug: true } },
+            visitor: { select: { hash: true } },
+        },
+    });
+
+    if (!existing) {
+        return { ok: false, errorCode: CommentErrorCode.PostNotFound };
+    }
+
+    const isOwner = Boolean(options.visitorHash && existing.visitor.hash === options.visitorHash);
+    if (!options.isAdmin && !isOwner) {
+        return { ok: false, errorCode: CommentErrorCode.Unauthorized };
+    }
+
+    await prisma.comment.delete({
+        where: { id: existing.id },
+    });
+
+    return { ok: true, slug: existing.post.slug };
 }

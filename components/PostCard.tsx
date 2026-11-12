@@ -4,12 +4,12 @@ import RelativeDate from "./RelativeDate";
 import ThumbsUpIcon from "./ThumbsUpIcon";
 
 export type PostWithTags = Prisma.PostGetPayload<{
-  include: {
-    tags: true;
-    _count: { select: { likes: true } };
-  };
+    include: {
+        tags: true;
+        _count: { select: { likes: true } };
+    };
 }> & {
-  likes?: { id: number }[];
+    likes?: { id: number }[];
 };
 
 type PostCardProps = {
@@ -50,11 +50,10 @@ export default function PostCard({ post, untitledLabel = "Sem título" }: PostCa
                     <div className="flex items-center gap-3">
                         <RelativeDate date={post.createdAt} className="text-sm text-gray-500 dark:text-gh-muted" />
                         <span
-                            className={`inline-flex items-center gap-1 text-xs font-medium tabular-nums ${
-                                isLiked
+                            className={`inline-flex items-center gap-1 text-xs font-medium tabular-nums ${isLiked
                                     ? "text-sky-600 dark:text-gh-blue"
                                     : "text-gray-400 dark:text-gh-muted"
-                            }`}
+                                }`}
                         >
                             <ThumbsUpIcon filled={isLiked} className="w-3.5 h-3.5" />
                             {likesCount}

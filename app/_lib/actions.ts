@@ -3,12 +3,13 @@ import path from "path";
 import crypto from "crypto";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { createPost, createTag, deletePost, deleteTag, getDrafts, getPostById, getPostBySlug, isAssetUsedInOtherPosts, recordPostRead, togglePostLike, updatePost, updateTag } from "./posts"
+import { createPost, createPostComment, createTag, deletePost, deletePostComment, deleteTag, getDrafts, getPostById, getPostBySlug, isAssetUsedInOtherPosts, recordPostRead, togglePostLike, updatePost, updateTag } from "./posts"
 import { extractAssetUrls, slugify } from "./util"
 import { mkdir, readdir, stat, unlink, writeFile } from "fs/promises"
 import { clearAdminSession, isAuthenticated, isValidPassword, setAdminSession } from "./auth"
 import { visitorHashSchema } from "./visitor"
-import { getOrCreateVisitorHashForAction, restoreVisitorHashCookie } from "./visitor-server"
+import { getOrCreateVisitorHashForAction, getVisitorHash, restoreVisitorHashCookie } from "./visitor-server"
+import { CommentErrorCode, CreateCommentInput, PublicComment, validateAndPrepareComment } from "./comment"
 
 const postIdSchema = z.number().int().positive();
 
@@ -521,5 +522,62 @@ export async function restoreVisitorHashAction(hash: string): Promise<{ success:
         return { success: true };
     } catch {
         return { success: false };
+    }
+}
+
+export type CreateCommentActionResult =
+    | { success: true; comment: PublicComment }
+    | { success: false; errorCode: CommentErrorCode; retryAfterSeconds?: number };
+
+export async function createCommentAction(input: CreateCommentInput): Promise<CreateCommentActionResult> {
+    const validation = validateAndPrepareComment(input);
+    if (!validation.ok) {
+        return { success: false, errorCode: validation.errorCode };
+    }
+
+    try {
+        const visitorHash = await getOrCreateVisitorHashForAction();
+        const result = await createPostComment(validation.data, visitorHash);
+
+        if (!result.ok) {
+            return {
+                success: false,
+                errorCode: result.errorCode,
+                retryAfterSeconds: result.retryAfterSeconds,
+            };
+        }
+
+        revalidatePath("/");
+        revalidatePath(`/post/${result.slug}`);
+        return { success: true, comment: result.comment };
+    } catch {
+        return { success: false, errorCode: CommentErrorCode.GenericError };
+    }
+}
+
+export async function deleteCommentAction(commentId: number): Promise<
+    { success: true } | { success: false; errorCode: CommentErrorCode }
+> {
+    const parsedId = postIdSchema.safeParse(commentId);
+    if (!parsedId.success) {
+        return { success: false, errorCode: CommentErrorCode.InvalidInput };
+    }
+
+    try {
+        const [isAdmin, visitorHash] = await Promise.all([
+            isAuthenticated(),
+            getVisitorHash(),
+        ]);
+
+        const result = await deletePostComment(parsedId.data, { isAdmin, visitorHash });
+        if (!result.ok) {
+            return { success: false, errorCode: result.errorCode };
+        }
+
+        revalidatePath("/");
+        revalidatePath(`/post/${result.slug}`);
+        return { success: true };
+    } catch {
+        return { success: false, errorCode: CommentErrorCode.GenericError };
     }
 }

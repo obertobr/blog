@@ -64,6 +64,7 @@ export interface Dictionary {
         draft: string;
         editPost: string;
         editDraft: string;
+        deleteConfirmTitle: string;
         deleteConfirm: string;
         deleteError: string;
         deleting: string;
@@ -161,6 +162,40 @@ export interface Dictionary {
         ariaLike: string;
         ariaUnlike: string;
     };
+    comments: {
+        title: string;
+        countSingular: string;
+        countPlural: string;
+        newComment: string;
+        cancel: string;
+        empty: string;
+        modeAnonymous: string;
+        anonymousLabel: string;
+        namePlaceholder: string;
+        contentPlaceholder: string;
+        submit: string;
+        submitting: string;
+        submittedSuccess: string;
+        deleteLabel: string;
+        deletingLabel: string;
+        deleteConfirmTitle: string;
+        deleteConfirm: string;
+        deletedSuccess: string;
+        errors: {
+            invalidInput: string;
+            nameRequired: string;
+            nameTooLong: string;
+            contentTooShort: string;
+            contentTooLong: string;
+            cooldownPrefix: string;
+            cooldownSuffix: string;
+            rateLimited: string;
+            duplicate: string;
+            postNotFound: string;
+            unauthorized: string;
+            genericError: string;
+        };
+    };
     relativeDate: {
         justNow: string;
         yearSingular: string;
@@ -179,4 +214,8 @@ const dictionaries = {
 
 export function getDictionary(locale: Locale): Dictionary {
     return dictionaries[locale];
+}
+
+export function selectPluralForm(count: number, singular: string, plural: string): string {
+    return Math.abs(count) === 1 ? singular : plural;
 }

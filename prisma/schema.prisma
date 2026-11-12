@@ -22,6 +22,7 @@ model Post {
   tags       Tag[]      @relation("PostTags")
   likes      PostLike[]
   reads      PostRead[]
+  comments   Comment[]
   createdAt  DateTime   @default(now())
   updatedAt  DateTime   @updatedAt
 }
@@ -34,12 +35,29 @@ model Tag {
 }
 
 model Visitor {
-  id        Int        @id @default(autoincrement())
-  hash      String     @unique
-  likes     PostLike[]
-  reads     PostRead[]
-  createdAt DateTime   @default(now())
-  lastSeen  DateTime   @updatedAt
+  id          Int        @id @default(autoincrement())
+  hash        String     @unique
+  displayName String?
+  likes       PostLike[]
+  reads       PostRead[]
+  comments    Comment[]
+  createdAt   DateTime   @default(now())
+  lastSeen    DateTime   @updatedAt
+}
+
+model Comment {
+  id          Int      @id @default(autoincrement())
+  postId      Int
+  visitorId   Int
+  authorName  String?
+  isAnonymous Boolean  @default(false)
+  content     String
+  post        Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  visitor     Visitor  @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@index([postId, createdAt])
+  @@index([visitorId, createdAt])
 }
 
 model PostLike {

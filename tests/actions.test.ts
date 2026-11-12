@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+    createCommentAction,
     createPostAction,
     deleteAssetAction,
+    deleteCommentAction,
     deletePostAction,
     getPostForEditAction,
     listAvailableAssetsAction,
@@ -15,6 +17,7 @@ import {
     toggleLikeAction,
     unpublishPostAction,
 } from "../app/_lib/actions";
+import { CommentAuthorMode, CommentErrorCode } from "../app/_lib/comment";
 import * as postsModule from "../app/_lib/posts";
 import * as authModule from "../app/_lib/auth";
 import * as visitorServerModule from "../app/_lib/visitor-server";
@@ -37,6 +40,8 @@ vi.mock("../app/_lib/posts", () => ({
     isAssetUsedInOtherPosts: vi.fn(),
     togglePostLike: vi.fn(),
     recordPostRead: vi.fn(),
+    createPostComment: vi.fn(),
+    deletePostComment: vi.fn(),
 }));
 
 vi.mock("../app/_lib/visitor-server", () => ({
@@ -812,6 +817,162 @@ describe("restoreVisitorHashAction", () => {
         const result = await restoreVisitorHashAction(validHash);
 
         expect(visitorServerModule.restoreVisitorHashCookie).toHaveBeenCalledWith(validHash);
+        expect(result).toEqual({ success: true });
+    });
+});
+
+describe("createCommentAction", () => {
+    const mockHash = "d".repeat(64);
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        vi.mocked(visitorServerModule.getOrCreateVisitorHashForAction).mockResolvedValue(mockHash);
+    });
+
+    it("rejects empty content before touching database", async () => {
+        const result = await createCommentAction({
+            postId: 1,
+            authorMode: CommentAuthorMode.Anonymous,
+            content: " ",
+        });
+
+        expect(result).toEqual({ success: false, errorCode: CommentErrorCode.ContentTooShort });
+        expect(postsModule.createPostComment).not.toHaveBeenCalled();
+    });
+
+    it("creates named comment and propagates public DTO", async () => {
+        const createdComment = {
+            id: 12,
+            postId: 1,
+            authorName: "Carlos",
+            isAnonymous: false,
+            content: "Ótimo post!",
+            createdAt: "2026-11-12T17:00:00.000Z",
+            isOwn: true,
+        };
+        vi.mocked(postsModule.createPostComment).mockResolvedValue({
+            ok: true,
+            slug: "post-teste",
+            comment: createdComment,
+        });
+
+        const result = await createCommentAction({
+            postId: 1,
+            authorMode: CommentAuthorMode.Named,
+            authorName: " Carlos ",
+            content: "Ótimo post!",
+        });
+
+        expect(postsModule.createPostComment).toHaveBeenCalledWith(
+            {
+                postId: 1,
+                isAnonymous: false,
+                authorName: "Carlos",
+                content: "Ótimo post!",
+            },
+            mockHash
+        );
+        expect(result).toEqual({ success: true, comment: createdComment });
+    });
+
+    it("propagates cooldown errorCode and retryAfterSeconds from database", async () => {
+        vi.mocked(postsModule.createPostComment).mockResolvedValue({
+            ok: false,
+            errorCode: CommentErrorCode.Cooldown,
+            retryAfterSeconds: 22,
+        });
+
+        const result = await createCommentAction({
+            postId: 1,
+            authorMode: CommentAuthorMode.Anonymous,
+            content: "Outro comentário rápido",
+        });
+
+        expect(result).toEqual({
+            success: false,
+            errorCode: CommentErrorCode.Cooldown,
+            retryAfterSeconds: 22,
+        });
+    });
+
+    it("propagates duplicate and rate-limited errors from database", async () => {
+        vi.mocked(postsModule.createPostComment).mockResolvedValueOnce({
+            ok: false,
+            errorCode: CommentErrorCode.Duplicate,
+        });
+
+        const duplicateResult = await createCommentAction({
+            postId: 1,
+            authorMode: CommentAuthorMode.Anonymous,
+            content: "Mensagem repetida",
+        });
+
+        expect(duplicateResult).toEqual({
+            success: false,
+            errorCode: CommentErrorCode.Duplicate,
+        });
+
+        vi.mocked(postsModule.createPostComment).mockResolvedValueOnce({
+            ok: false,
+            errorCode: CommentErrorCode.RateLimited,
+        });
+
+        const rateLimitedResult = await createCommentAction({
+            postId: 1,
+            authorMode: CommentAuthorMode.Anonymous,
+            content: "Muitos comentários",
+        });
+
+        expect(rateLimitedResult).toEqual({
+            success: false,
+            errorCode: CommentErrorCode.RateLimited,
+        });
+    });
+});
+
+describe("deleteCommentAction", () => {
+    const mockHash = "e".repeat(64);
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        vi.mocked(authModule.isAuthenticated).mockResolvedValue(false);
+        vi.mocked(visitorServerModule.getVisitorHash).mockResolvedValue(mockHash);
+    });
+
+    it("rejects invalid comment IDs", async () => {
+        const result = await deleteCommentAction(-5);
+        expect(result).toEqual({ success: false, errorCode: CommentErrorCode.InvalidInput });
+        expect(postsModule.deletePostComment).not.toHaveBeenCalled();
+    });
+
+    it("returns unauthorized when neither admin nor owner", async () => {
+        vi.mocked(postsModule.deletePostComment).mockResolvedValue({
+            ok: false,
+            errorCode: CommentErrorCode.Unauthorized,
+        });
+
+        const result = await deleteCommentAction(15);
+
+        expect(postsModule.deletePostComment).toHaveBeenCalledWith(15, {
+            isAdmin: false,
+            visitorHash: mockHash,
+        });
+        expect(result).toEqual({ success: false, errorCode: CommentErrorCode.Unauthorized });
+    });
+
+    it("deletes comment when authorized", async () => {
+        vi.mocked(authModule.isAuthenticated).mockResolvedValue(true);
+        vi.mocked(postsModule.deletePostComment).mockResolvedValue({
+            ok: true,
+            slug: "meu-post",
+        });
+
+        const result = await deleteCommentAction(15);
+
+        expect(postsModule.deletePostComment).toHaveBeenCalledWith(15, {
+            isAdmin: true,
+            visitorHash: mockHash,
+        });
         expect(result).toEqual({ success: true });
     });
 });

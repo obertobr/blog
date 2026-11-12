@@ -11,6 +11,6 @@
 | **07** | **Tema escuro e claro (Dark/Light Mode)** | Conectar o seletor da NavBar, aplicar classes dark mode e persistir escolha do usuário | ✅ Concluído |
 | **08** | **Sistema de idiomas (i18n: pt-BR / en)** | Conectar o seletor da NavBar, traduzir textos da interface e adaptar formatação de data | ✅ Concluído |
 | **09** | **Sistema de likes nos posts** | Botão de curtir com contagem em tempo real e controle de votos por sessão/usuário | ✅ Concluído |
-| **10** | **Sistema de comentários** | Formulário e listagem de comentários em cada post, com moderação administrativa | ⏳ Em Andamento |
-| **11** | **Filtro por Tags e Pesquisa na Home** | Busca por título/conteúdo e filtro de listagem ao clicar nas tags | ⏳ Pendente |
+| **10** | **Sistema de comentários** | Formulário e listagem de comentários em cada post, com moderação administrativa | ✅ Concluído |
+| **11** | **Filtro por Tags e Pesquisa na Home** | Busca por título/conteúdo e filtro de listagem ao clicar nas tags | ⏳ Em Andamento |
 | **12** | **Página de posts relevantes (`/relevant`)** | Feed de recomendação baseado no histórico de posts lidos e curtidos pelo visitante | ⏳ Pendente |

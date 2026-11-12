@@ -1,9 +1,12 @@
-import { getPostBySlug } from "@/app/_lib/posts"
+import { getPostBySlug, getPostComments, getVisitorDisplayName } from "@/app/_lib/posts"
 import { markdownToHtml } from "@/app/_lib/util"
 import { notFound } from "next/navigation"
 import { isAuthenticated } from "@/app/_lib/auth"
+import { selectPluralForm } from "@/app/_lib/i18n"
 import { getServerDictionary } from "@/app/_lib/i18n-server"
 import { getVisitorHash } from "@/app/_lib/visitor-server"
+import CommentIcon from "@/components/CommentIcon"
+import CommentsSection from "@/components/CommentsSection"
 import DeletePostButton from "@/components/DeletePostButton"
 import LikeButton from "@/components/LikeButton"
 import PostReadTracker from "@/components/PostReadTracker"
@@ -31,9 +34,14 @@ export default async function Post({
         notFound()
     }
 
-    const contentRemark = await markdownToHtml(post.content || "")
+    const [contentRemark, comments, savedName] = await Promise.all([
+        markdownToHtml(post.content || ""),
+        post.published ? getPostComments(post.id, visitorHash) : Promise.resolve([]),
+        post.published ? getVisitorDisplayName(visitorHash) : Promise.resolve(null),
+    ])
     const initialLikesCount = post._count?.likes ?? 0
     const initialLiked = Boolean(post.likes && post.likes.length > 0)
+    const commentsCount = comments.length
 
     return (
         <div className="max-w-4xl mx-auto">
@@ -80,16 +88,38 @@ export default async function Post({
                 {post.published && (
                     <>
                         <PostReadTracker postId={post.id} />
-                        <footer className="border-t border-gray-300 dark:border-gh-border px-6 py-4 bg-gray-50/50 dark:bg-gh-subtle/30 rounded-b-lg">
+                        <footer className="border-t border-gray-300 dark:border-gh-border px-6 py-4 bg-gray-50/50 dark:bg-gh-subtle/30 rounded-b-lg flex items-center justify-between gap-4 flex-wrap">
                             <LikeButton
                                 postId={post.id}
                                 initialLiked={initialLiked}
                                 initialLikesCount={initialLikesCount}
                             />
+                            <a
+                                href="#comments"
+                                className="inline-flex items-center gap-1.5 text-sm text-gray-600 dark:text-gh-muted hover:text-gray-900 dark:hover:text-gh-text transition-colors"
+                            >
+                                <CommentIcon className="w-4 h-4" />
+                                <span className="tabular-nums">{commentsCount}</span>
+                                <span>
+                                    {selectPluralForm(
+                                        commentsCount,
+                                        t.comments.countSingular,
+                                        t.comments.countPlural
+                                    )}
+                                </span>
+                            </a>
                         </footer>
                     </>
                 )}
             </div>
+            {post.published && (
+                <CommentsSection
+                    postId={post.id}
+                    initialComments={comments}
+                    initialSavedName={savedName}
+                    isAdmin={isAuth}
+                />
+            )}
         </div>
     )
 }

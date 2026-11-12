@@ -5,6 +5,7 @@ import {
     Locale,
     localeSchema,
     parseLocale,
+    selectPluralForm,
 } from "../app/_lib/i18n";
 
 describe("i18n Domain Logic", () => {
@@ -64,6 +65,21 @@ describe("i18n Domain Logic", () => {
             expect(localeSchema.safeParse(Locale.PtBr).success).toBe(true);
             expect(localeSchema.safeParse(Locale.En).success).toBe(true);
             expect(localeSchema.safeParse("fr").success).toBe(false);
+        });
+    });
+
+    describe("selectPluralForm", () => {
+        it("returns singular only for count 1 and plural for 0 or multiple", () => {
+            const pt = getDictionary(Locale.PtBr);
+            const en = getDictionary(Locale.En);
+
+            expect(selectPluralForm(0, pt.comments.countSingular, pt.comments.countPlural)).toBe("Comentários");
+            expect(selectPluralForm(1, pt.comments.countSingular, pt.comments.countPlural)).toBe("Comentário");
+            expect(selectPluralForm(2, pt.comments.countSingular, pt.comments.countPlural)).toBe("Comentários");
+
+            expect(selectPluralForm(0, en.comments.countSingular, en.comments.countPlural)).toBe("Comments");
+            expect(selectPluralForm(1, en.comments.countSingular, en.comments.countPlural)).toBe("Comment");
+            expect(selectPluralForm(5, en.comments.countSingular, en.comments.countPlural)).toBe("Comments");
         });
     });
 });
