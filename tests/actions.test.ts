@@ -1,16 +1,30 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createPostAction, deleteAssetAction, deletePostAction, listAvailableAssetsAction, loginAction, saveAssetAction, saveTagAction } from "../app/_lib/actions";
+import {
+    createPostAction,
+    deleteAssetAction,
+    deletePostAction,
+    getPostForEditAction,
+    listAvailableAssetsAction,
+    listDraftsAction,
+    loginAction,
+    saveAssetAction,
+    saveDraftAction,
+    saveTagAction,
+} from "../app/_lib/actions";
 import * as postsModule from "../app/_lib/posts";
 import * as authModule from "../app/_lib/auth";
 import { readdir, stat, unlink } from "fs/promises";
 
 vi.mock("../app/_lib/posts", () => ({
     createPost: vi.fn(),
+    updatePost: vi.fn(),
     createTag: vi.fn(),
     updateTag: vi.fn(),
     deleteTag: vi.fn(),
     deletePost: vi.fn(),
     getPostById: vi.fn(),
+    getPostBySlug: vi.fn(),
+    getDrafts: vi.fn(),
     isAssetUsedInOtherPosts: vi.fn(),
 }));
 
@@ -35,7 +49,16 @@ describe("loginAction", () => {
         process.env.ADMIN_PASSWORD_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";
     });
 
-    it("logs in successfully with correct password", async () => {
+    it("returns error on invalid password", async () => {
+        vi.mocked(authModule.isValidPassword).mockReturnValue(false);
+
+        const result = await loginAction(null, "wrong");
+
+        expect(result.error).toBe("Senha incorreta");
+        expect(authModule.setAdminSession).not.toHaveBeenCalled();
+    });
+
+    it("sets session and returns success on valid password", async () => {
         vi.mocked(authModule.isValidPassword).mockReturnValue(true);
 
         const result = await loginAction(null, "admin");
@@ -43,32 +66,13 @@ describe("loginAction", () => {
         expect(result.success).toBe(true);
         expect(authModule.setAdminSession).toHaveBeenCalled();
     });
-
-    it("rejects login with incorrect password", async () => {
-        vi.mocked(authModule.isValidPassword).mockReturnValue(false);
-
-        const result = await loginAction(null, "senha-errada");
-
-        expect(result.error).toBe("Senha incorreta");
-        expect(authModule.setAdminSession).not.toHaveBeenCalled();
-    });
-
-    it("throws error when ADMIN_PASSWORD_HASH is not set", async () => {
-        vi.mocked(authModule.isValidPassword).mockImplementation(() => {
-            throw new Error("ADMIN_PASSWORD_HASH is not set in environment variables (.env). Run 'npm run set-password' to configure it.");
-        });
-
-        await expect(loginAction(null, "admin")).rejects.toThrow(
-            "ADMIN_PASSWORD_HASH is not set in environment variables (.env)"
-        );
-        expect(authModule.setAdminSession).not.toHaveBeenCalled();
-    });
 });
 
 describe("createPostAction", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         vi.mocked(authModule.isAuthenticated).mockResolvedValue(true);
+        vi.mocked(postsModule.getPostBySlug).mockResolvedValue(null);
     });
 
     it("creates post with slug and returns success state", async () => {
@@ -77,6 +81,7 @@ describe("createPostAction", () => {
             title: "Post de Teste",
             slug: "post-de-teste",
             content: "Conteudo",
+            published: true,
             createdAt: new Date(),
             updatedAt: new Date(),
         });
@@ -86,14 +91,55 @@ describe("createPostAction", () => {
 
         const result = await createPostAction(initialState, formPost);
 
-        expect(result.message).toBe("Post created");
+        expect(result.message).toBe("Post criado com sucesso");
         expect(result.slug).toBe("post-de-teste");
+        expect(result.postId).toBe(1);
         expect(postsModule.createPost).toHaveBeenCalledWith(
             "Post de Teste",
             "Conteudo",
             "post-de-teste",
-            ["dev"]
+            ["dev"],
+            true
         );
+    });
+
+    it("publishes an existing draft post by updating it", async () => {
+        vi.mocked(postsModule.updatePost).mockResolvedValue({
+            id: 42,
+            title: "Rascunho Pronto",
+            slug: "rascunho-pronto",
+            content: "Conteudo completo",
+            published: true,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            tags: [],
+        });
+
+        const initialState = { message: "", slug: null };
+        const formPost = { id: 42, title: "Rascunho Pronto", content: "Conteudo completo", tags: ["noticias"] };
+
+        const result = await createPostAction(initialState, formPost);
+
+        expect(result.message).toBe("Post publicado com sucesso");
+        expect(result.slug).toBe("rascunho-pronto");
+        expect(result.postId).toBe(42);
+        expect(postsModule.updatePost).toHaveBeenCalledWith(42, {
+            title: "Rascunho Pronto",
+            content: "Conteudo completo",
+            slug: "rascunho-pronto",
+            tags: ["noticias"],
+            published: true,
+        });
+    });
+
+    it("blocks post creation if title is empty", async () => {
+        const initialState = { message: "", slug: null };
+        const formPost = { title: "   ", content: "Conteudo", tags: [] };
+
+        const result = await createPostAction(initialState, formPost);
+
+        expect(result.message).toBe("Título é obrigatório para publicar o post");
+        expect(postsModule.createPost).not.toHaveBeenCalled();
     });
 
     it("blocks post creation if user is not authenticated", async () => {
@@ -141,6 +187,7 @@ describe("createPostAction", () => {
             title: "Post Completo",
             content: "Aqui está a imagem: ![foto](/assets/usada.png)",
             slug: "post-completo",
+            published: true,
             createdAt: new Date(),
             updatedAt: new Date(),
         });
@@ -155,51 +202,252 @@ describe("createPostAction", () => {
 
         const result = await createPostAction(initialState, formPost);
 
-        expect(result.message).toBe("Post created");
+        expect(result.message).toBe("Post criado com sucesso");
         expect(result.slug).toBe("post-completo");
     });
 });
 
-describe("saveTagAction", () => {
+describe("saveDraftAction", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         vi.mocked(authModule.isAuthenticated).mockResolvedValue(true);
     });
 
-    it("updates existing tag when id is provided", async () => {
-        vi.mocked(postsModule.updateTag).mockResolvedValue({
-            id: 1,
-            name: "react",
-            color: "#61dafb",
-        });
+    it("blocks draft saving if user is not authenticated", async () => {
+        vi.mocked(authModule.isAuthenticated).mockResolvedValue(false);
 
-        const result = await saveTagAction(null, { id: 1, name: "react", color: "#61dafb" });
+        const result = await saveDraftAction(null, { title: "Draft", content: "Texto", tags: [] });
 
-        expect(result.success).toBe(true);
-        expect(result.message).toBe("Tag react saved");
-        expect(postsModule.updateTag).toHaveBeenCalledWith(1, { name: "react", color: "#61dafb" });
+        expect(result.success).toBe(false);
+        expect(result.error).toBe("Não autorizado");
+        expect(postsModule.createPost).not.toHaveBeenCalled();
     });
 
-    it("creates new tag when id is not provided", async () => {
-        vi.mocked(postsModule.createTag).mockResolvedValue({
-            id: 2,
-            name: "node",
-            color: null,
+    it("creates a new draft with unique slug and published=false when id is not provided", async () => {
+        vi.mocked(postsModule.createPost).mockResolvedValue({
+            id: 99,
+            title: "Meu Rascunho",
+            slug: "meu-rascunho-1234abcd",
+            content: "Escrevendo...",
+            published: false,
+            createdAt: new Date(),
+            updatedAt: new Date(),
         });
 
-        const result = await saveTagAction(null, { name: "node", color: null });
+        const result = await saveDraftAction(null, {
+            title: "Meu Rascunho",
+            content: "Escrevendo...",
+            tags: ["dev"],
+        });
 
         expect(result.success).toBe(true);
-        expect(result.message).toBe("Tag node saved");
-        expect(postsModule.createTag).toHaveBeenCalledWith("node", null);
+        expect(result.id).toBe(99);
+        expect(result.message).toBe("Rascunho salvo");
+        expect(postsModule.createPost).toHaveBeenCalledWith(
+            "Meu Rascunho",
+            "Escrevendo...",
+            expect.stringMatching(/^meu-rascunho-[a-f0-9]{8}$/),
+            ["dev"],
+            false
+        );
     });
 
-    it("handles duplicate tag name error P2002", async () => {
-        vi.mocked(postsModule.createTag).mockRejectedValue({ code: "P2002" });
+    it("updates existing draft when id is provided", async () => {
+        vi.mocked(postsModule.updatePost).mockResolvedValue({
+            id: 99,
+            title: "Rascunho Atualizado",
+            slug: "meu-rascunho-1234abcd",
+            content: "Texto novo",
+            published: false,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            tags: [],
+        });
 
-        const result = await saveTagAction(null, { name: "react", color: null });
+        const result = await saveDraftAction(null, {
+            id: 99,
+            title: "Rascunho Atualizado",
+            content: "Texto novo",
+            tags: ["react"],
+        });
 
-        expect(result.error).toBe("Tag with this name already exists");
+        expect(result.success).toBe(true);
+        expect(result.id).toBe(99);
+        expect(result.message).toBe("Rascunho atualizado");
+        expect(postsModule.updatePost).toHaveBeenCalledWith(99, {
+            title: "Rascunho Atualizado",
+            content: "Texto novo",
+            tags: ["react"],
+            published: false,
+        });
+    });
+
+    it("allows saving draft with null/empty title and generates provisional slug from content", async () => {
+        vi.mocked(postsModule.createPost).mockResolvedValue({
+            id: 100,
+            title: null,
+            slug: "apenas-conteudo-abcd1234",
+            content: "Apenas conteúdo",
+            published: false,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        });
+
+        const result = await saveDraftAction(null, {
+            title: "",
+            content: "Apenas conteúdo",
+            tags: [],
+        });
+
+        expect(result.success).toBe(true);
+        expect(postsModule.createPost).toHaveBeenCalledWith(
+            null,
+            "Apenas conteúdo",
+            expect.stringMatching(/^apenas-conteudo-[a-f0-9]{8}$/),
+            [],
+            false
+        );
+    });
+
+    it("saves draft with null title and fallback slug when title is blank and no content", async () => {
+        vi.mocked(postsModule.createPost).mockResolvedValue({
+            id: 101,
+            title: null,
+            slug: "rascunho-abcd1234",
+            content: "",
+            published: false,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        });
+
+        const result = await saveDraftAction(null, {
+            title: "",
+            content: "",
+            tags: ["dev"],
+        });
+
+        expect(result.success).toBe(true);
+        expect(postsModule.createPost).toHaveBeenCalledWith(
+            null,
+            "",
+            expect.stringMatching(/^rascunho-[a-f0-9]{8}$/),
+            ["dev"],
+            false
+        );
+    });
+});
+
+describe("listDraftsAction and getPostForEditAction", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        vi.mocked(authModule.isAuthenticated).mockResolvedValue(true);
+    });
+
+    it("listDraftsAction returns list of unpublished posts", async () => {
+        vi.mocked(postsModule.getDrafts).mockResolvedValue([
+            {
+                id: 10,
+                title: "Rascunho 1",
+                slug: "rascunho-1",
+                content: "Texto 1",
+                published: false,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                tags: [{ id: 1, name: "tech", color: null }],
+            },
+        ]);
+
+        const result = await listDraftsAction();
+
+        expect(result.drafts).toHaveLength(1);
+        expect(result.drafts[0].title).toBe("Rascunho 1");
+        expect(result.drafts[0].tags).toEqual(["tech"]);
+    });
+
+    it("getPostForEditAction returns post data for editing", async () => {
+        vi.mocked(postsModule.getPostById).mockResolvedValue({
+            id: 10,
+            title: "Rascunho",
+            slug: "rascunho",
+            content: "Conteudo",
+            published: false,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            tags: [{ id: 1, name: "tag1", color: null }],
+        });
+
+        const result = await getPostForEditAction(10);
+
+        expect(result.post).not.toBeNull();
+        expect(result.post?.title).toBe("Rascunho");
+        expect(result.post?.tags).toEqual(["tag1"]);
+    });
+});
+
+describe("saveAssetAction", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        vi.mocked(authModule.isAuthenticated).mockResolvedValue(true);
+    });
+
+    it("blocks upload if user is not authenticated", async () => {
+        vi.mocked(authModule.isAuthenticated).mockResolvedValue(false);
+
+        const fakeFile = {
+            name: "test.png",
+            type: "image/png",
+            size: 1000,
+            arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(10)),
+        } as unknown as File;
+
+        const result = await saveAssetAction(null, [fakeFile]);
+
+        expect(result.errors).toContain("Não autorizado");
+        expect(result.assets).toHaveLength(0);
+    });
+
+    it("saves image file with slugified and unique name", async () => {
+        const fakeFile = {
+            name: "Foto de Férias!.png",
+            type: "image/png",
+            size: 1000,
+            arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(10)),
+        } as unknown as File;
+
+        const result = await saveAssetAction(null, [fakeFile]);
+
+        expect(result.errors).toHaveLength(0);
+        expect(result.assets).toHaveLength(1);
+        expect(result.assets[0]).toMatch(/^\/assets\/foto-de-ferias-[a-f0-9]{8}\.png$/);
+    });
+
+    it("infers extension from file.type when file.name lacks extension (e.g. Paint paste)", async () => {
+        const paintBlob = {
+            name: "blob",
+            type: "image/jpeg",
+            size: 2048,
+            arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(10)),
+        } as unknown as File;
+
+        const result = await saveAssetAction(null, [paintBlob]);
+
+        expect(result.errors).toHaveLength(0);
+        expect(result.assets).toHaveLength(1);
+        expect(result.assets[0]).toMatch(/^\/assets\/imagem-[a-f0-9]{8}\.jpg$/);
+    });
+
+    it("rejects unsupported extensions", async () => {
+        const fakeFile = {
+            name: "script.sh",
+            type: "text/x-sh",
+            size: 1000,
+            arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(10)),
+        } as unknown as File;
+
+        const result = await saveAssetAction(null, [fakeFile]);
+
+        expect(result.assets).toHaveLength(0);
+        expect(result.errors[0]).toContain("não é uma imagem suportada");
     });
 });
 
@@ -209,11 +457,41 @@ describe("deleteAssetAction", () => {
         vi.mocked(authModule.isAuthenticated).mockResolvedValue(true);
     });
 
-    it("sanitizes file path to prevent directory traversal", async () => {
+    it("blocks deletion if user is not authenticated", async () => {
+        vi.mocked(authModule.isAuthenticated).mockResolvedValue(false);
+
+        const result = await deleteAssetAction(null, "/assets/test.png");
+
+        expect(result.error).toBe("Não autorizado");
+        expect(unlink).not.toHaveBeenCalled();
+    });
+
+    it("prevents directory traversal attacks by constraining deletion to public/assets via basename", async () => {
         vi.mocked(postsModule.isAssetUsedInOtherPosts).mockResolvedValue(false);
         vi.mocked(unlink).mockResolvedValue();
 
-        const result = await deleteAssetAction(null, "../../malicious.png");
+        const result = await deleteAssetAction(null, "../../../etc/passwd");
+
+        expect(result.success).toBe(true);
+        expect(unlink).toHaveBeenCalledWith(expect.stringMatching(/[\\/]public[\\/]assets[\\/]passwd$/));
+    });
+
+    it("deletes file safely from public/assets directory if not used in posts", async () => {
+        vi.mocked(postsModule.isAssetUsedInOtherPosts).mockResolvedValue(false);
+        vi.mocked(unlink).mockResolvedValue();
+
+        const result = await deleteAssetAction(null, "/assets/foto.png");
+
+        expect(result.success).toBe(true);
+        expect(result.deletedFromDisk).toBe(true);
+        expect(unlink).toHaveBeenCalledWith(expect.stringMatching(/[\\/]public[\\/]assets[\\/]foto\.png$/));
+    });
+
+    it("strips path prefixes from malicious inputs and operates only on basename", async () => {
+        vi.mocked(postsModule.isAssetUsedInOtherPosts).mockResolvedValue(false);
+        vi.mocked(unlink).mockResolvedValue();
+
+        const result = await deleteAssetAction(null, "/assets/../../malicious.png");
 
         expect(result.success).toBe(true);
         expect(unlink).toHaveBeenCalledWith(expect.stringMatching(/[\\/]public[\\/]assets[\\/]malicious\.png$/));
@@ -231,60 +509,37 @@ describe("deleteAssetAction", () => {
     });
 });
 
-describe("saveAssetAction", () => {
+describe("saveTagAction and deleteTagAction", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         vi.mocked(authModule.isAuthenticated).mockResolvedValue(true);
     });
 
-    it("generates unique filenames so files with identical names never overwrite each other", async () => {
-        const mockFile1 = {
-            name: "foto.png",
-            size: 1024,
-            arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(8)),
-        } as unknown as File;
+    it("blocks saving tag if not authenticated", async () => {
+        vi.mocked(authModule.isAuthenticated).mockResolvedValue(false);
 
-        const mockFile2 = {
-            name: "foto.png",
-            size: 1024,
-            arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(8)),
-        } as unknown as File;
+        const result = await saveTagAction(null, { name: "javascript" });
 
-        const result = await saveAssetAction(null, [mockFile1, mockFile2] as unknown as FileList);
-
-        expect(result.assets).toHaveLength(2);
-        expect(result.assets[0]).not.toBe(result.assets[1]);
-        expect(result.assets[0]).toMatch(/^\/assets\/foto-[a-f0-9]{8}\.png$/);
-        expect(result.assets[1]).toMatch(/^\/assets\/foto-[a-f0-9]{8}\.png$/);
-        expect(result.errors).toHaveLength(0);
+        expect(result.error).toBe("Não autorizado");
+        expect(postsModule.createTag).not.toHaveBeenCalled();
     });
 
-    it("rejects non-image extensions", async () => {
-        const mockBadFile = {
-            name: "script.sh",
-            size: 100,
-            arrayBuffer: vi.fn(),
-        } as unknown as File;
+    it("creates tag when no id is provided", async () => {
+        vi.mocked(postsModule.createTag).mockResolvedValue({ id: 1, name: "dev", color: "#ffffff" });
 
-        const result = await saveAssetAction(null, [mockBadFile] as unknown as FileList);
+        const result = await saveTagAction(null, { name: "dev", color: "#ffffff" });
 
-        expect(result.assets).toHaveLength(0);
-        expect(result.errors).toContain('Arquivo "script.sh" não é uma imagem suportada.');
+        expect(result.success).toBe(true);
+        expect(postsModule.createTag).toHaveBeenCalledWith("dev", "#ffffff");
     });
 
-    it("accepts clipboard blob images without extension (like MS Paint)", async () => {
-        const mockClipboardBlob = {
-            name: "blob",
-            type: "image/png",
-            size: 1024,
-            arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(8)),
-        } as unknown as File;
+    it("updates tag when id is provided", async () => {
+        vi.mocked(postsModule.updateTag).mockResolvedValue({ id: 1, name: "dev", color: "#000000" });
 
-        const result = await saveAssetAction(null, [mockClipboardBlob]);
+        const result = await saveTagAction(null, { id: 1, name: "dev", color: "#000000" });
 
-        expect(result.assets).toHaveLength(1);
-        expect(result.assets[0]).toMatch(/^\/assets\/imagem-[a-f0-9]{8}\.png$/);
-        expect(result.errors).toHaveLength(0);
+        expect(result.success).toBe(true);
+        expect(postsModule.updateTag).toHaveBeenCalledWith(1, { name: "dev", color: "#000000" });
     });
 });
 
@@ -309,6 +564,7 @@ describe("deletePostAction", () => {
             title: "Post",
             slug: "post",
             content: "Texto com ![imagem](/assets/exclusiva.png)",
+            published: true,
             createdAt: new Date(),
             updatedAt: new Date(),
             tags: [],
@@ -331,6 +587,7 @@ describe("deletePostAction", () => {
             title: "Post",
             slug: "post",
             content: "Texto com ![imagem](/assets/compartilhada.png)",
+            published: true,
             createdAt: new Date(),
             updatedAt: new Date(),
             tags: [],

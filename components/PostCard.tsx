@@ -46,7 +46,7 @@ export default function PostCard({ post }: PostCardProps) {
                         ))}
                     </div>
                 </div>
-                <h2 className='text-2xl font-bold'>{post.title}</h2>
+                <h2 className='text-2xl font-bold'>{post.title || "Sem título"}</h2>
                 <p className="line-clamp-2">{post.content}</p>
             </div>
         </Link>

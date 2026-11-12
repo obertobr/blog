@@ -4,7 +4,7 @@ import { redirect } from "next/navigation"
 import toast from "react-hot-toast"
 import { ChangeEvent, startTransition, useActionState, useCallback, useEffect, useRef, useState } from "react"
 import { markdown } from "@/app/_lib/markdown"
-import { createPostAction, deleteAssetAction, FormPostState, saveAssetAction } from "../_lib/actions"
+import { createPostAction, deleteAssetAction, FormPostState, getPostForEditAction, saveAssetAction, saveDraftAction } from "../_lib/actions"
 import Editor from "@monaco-editor/react";
 import { markdownToHtml } from "../_lib/util"
 import { editor } from "monaco-editor"
@@ -12,6 +12,17 @@ import CreatableSelect from 'react-select/creatable';
 import { getTags } from "../_lib/posts"
 import Asset from "@/components/Asset"
 import ReuseImageModal from "@/components/ReuseImageModal"
+import DraftsModal from "@/components/DraftsModal"
+
+export const AutoSaveStatus = {
+    Idle: "idle",
+    Dirty: "dirty",
+    Saving: "saving",
+    Saved: "saved",
+    Error: "error",
+} as const;
+
+export type AutoSaveStatus = (typeof AutoSaveStatus)[keyof typeof AutoSaveStatus];
 
 const optionsEditor: editor.IStandaloneEditorConstructionOptions = {
     fontSize: 14,
@@ -62,17 +73,22 @@ function getImagesFromDataTransfer(data: DataTransfer | null): File[] {
 }
 
 export default function CreatePost() {
-
     const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
 
     const [state, formAction] = useActionState(createPostAction, initialState);
     const [stateAsset, saveAsset] = useActionState(saveAssetAction, null);
-    const [stateDelete, deleteAsset] = useActionState(deleteAssetAction, null)
+    const [stateDelete, deleteAsset] = useActionState(deleteAssetAction, null);
+
+    const [draftId, setDraftId] = useState<number | null>(null);
+    const draftIdRef = useRef<number | null>(null);
 
     const [title, setTitle] = useState(state.formPost?.title || "");
     const [content, setContent] = useState(state.formPost?.content || "");
     const [tags, setTags] = useState(state.formPost?.tags || []);
     const [previewHtml, setPreviewHtml] = useState("");
+
+    const [saveStatus, setSaveStatus] = useState<AutoSaveStatus>(AutoSaveStatus.Idle);
+    const [lastSavedTime, setLastSavedTime] = useState<string>("");
 
     const [settingsOpen, settingsSetOpen] = useState(false);
     const [assetsOpen, assetsSetOpen] = useState(true);
@@ -81,6 +97,17 @@ export default function CreatePost() {
     const [assets, setAssets] = useState<string[]>([]);
     const [isDragging, setIsDragging] = useState(false);
     const [reuseModalOpen, setReuseModalOpen] = useState(false);
+    const [draftsModalOpen, setDraftsModalOpen] = useState(false);
+
+    const lastSavedRef = useRef<{ title: string; content: string; tags: string[] }>({
+        title: "",
+        content: "",
+        tags: [],
+    });
+    const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const maxWaitTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const isSavingRef = useRef<boolean>(false);
+    const isMountedRef = useRef<boolean>(false);
 
     const handleImportAssets = (importedUrls: string[]) => {
         setAssets(prev => {
@@ -94,6 +121,108 @@ export default function CreatePost() {
         const html = await markdownToHtml(markdown)
         setPreviewHtml(html);
     }, []);
+
+    const saveDraft = useCallback(async (isManual: boolean = false) => {
+        if (isSavingRef.current) return;
+
+        if (debounceTimerRef.current) {
+            clearTimeout(debounceTimerRef.current);
+            debounceTimerRef.current = null;
+        }
+        if (maxWaitTimerRef.current) {
+            clearTimeout(maxWaitTimerRef.current);
+            maxWaitTimerRef.current = null;
+        }
+
+        const currentTitle = title;
+        const currentContent = content;
+        const currentTags = tags;
+
+        const hasContent = currentTitle.trim().length > 0 || currentContent.trim().length > 0;
+        if (!hasContent) {
+            if (isManual) {
+                toast.error("Preencha o título ou conteúdo para salvar o rascunho");
+            }
+            return;
+        }
+
+        const isDifferent =
+            currentTitle !== lastSavedRef.current.title ||
+            currentContent !== lastSavedRef.current.content ||
+            JSON.stringify(currentTags) !== JSON.stringify(lastSavedRef.current.tags);
+
+        if (!isDifferent && !isManual) {
+            setSaveStatus(AutoSaveStatus.Saved);
+            return;
+        }
+
+        isSavingRef.current = true;
+        setSaveStatus(AutoSaveStatus.Saving);
+
+        try {
+            const result = await saveDraftAction({
+                id: draftIdRef.current ?? undefined,
+                title: currentTitle,
+                content: currentContent,
+                tags: currentTags,
+            });
+
+            if (result.success && result.id) {
+                draftIdRef.current = result.id;
+                setDraftId(result.id);
+                lastSavedRef.current = {
+                    title: currentTitle,
+                    content: currentContent,
+                    tags: [...currentTags],
+                };
+                setSaveStatus(AutoSaveStatus.Saved);
+                const timeString = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+                setLastSavedTime(timeString);
+                if (isManual) {
+                    toast.success("Rascunho salvo com sucesso!");
+                }
+            } else {
+                setSaveStatus(AutoSaveStatus.Error);
+                if (isManual) {
+                    toast.error(result.error || "Erro ao salvar rascunho");
+                }
+            }
+        } catch {
+            setSaveStatus(AutoSaveStatus.Error);
+            if (isManual) {
+                toast.error("Erro ao salvar rascunho");
+            }
+        } finally {
+            isSavingRef.current = false;
+        }
+    }, [title, content, tags]);
+
+    const handleSelectDraft = useCallback(async (selectedId: number) => {
+        const res = await getPostForEditAction(selectedId);
+        if (res.error || !res.post) {
+            toast.error(res.error || "Erro ao carregar rascunho");
+            return;
+        }
+
+        const post = res.post;
+        draftIdRef.current = post.id;
+        setDraftId(post.id);
+        setTitle(post.title || "");
+        setContent(post.content);
+        setTags(post.tags);
+        lastSavedRef.current = {
+            title: post.title || "",
+            content: post.content,
+            tags: [...post.tags],
+        };
+
+        if (editorRef.current) {
+            editorRef.current.setValue(post.content);
+        }
+        await convert(post.content);
+        setSaveStatus(AutoSaveStatus.Saved);
+        toast.success("Rascunho carregado");
+    }, [convert]);
 
     const uploadAndInsertImages = useCallback(async (files: File[]) => {
         const imageFiles = files.filter(f => f.type.startsWith("image/"));
@@ -167,13 +296,20 @@ export default function CreatePost() {
     }, [convert]);
 
     const handleSendForm = () => {
+        if (!title.trim()) {
+            toast.error("Defina um título nas Configurações para publicar o post");
+            settingsSetOpen(true);
+            return;
+        }
+
         startTransition(() => {
             formAction({
+                id: draftIdRef.current ?? undefined,
                 title,
                 content,
                 tags,
                 assets
-            })
+            });
         });
     };
 
@@ -234,11 +370,62 @@ export default function CreatePost() {
 
         listTags()
 
+        if (typeof window !== "undefined") {
+            const params = new URLSearchParams(window.location.search);
+            const urlDraftId = params.get("draftId");
+            if (urlDraftId) {
+                const num = parseInt(urlDraftId, 10);
+                if (!isNaN(num)) {
+                    handleSelectDraft(num);
+                }
+            }
+        }
+
         const edit = document.getElementById("edit");
         if (edit) {
             return markdown()
         }
-    }, [])
+    }, [handleSelectDraft])
+
+    useEffect(() => {
+        if (!isMountedRef.current) {
+            isMountedRef.current = true;
+            return;
+        }
+
+        const hasContent = title.trim().length > 0 || content.trim().length > 0;
+        if (!hasContent) return;
+
+        const isDifferent =
+            title !== lastSavedRef.current.title ||
+            content !== lastSavedRef.current.content ||
+            JSON.stringify(tags) !== JSON.stringify(lastSavedRef.current.tags);
+
+        if (!isDifferent) return;
+
+        setSaveStatus(AutoSaveStatus.Dirty);
+
+        if (debounceTimerRef.current) {
+            clearTimeout(debounceTimerRef.current);
+        }
+
+        debounceTimerRef.current = setTimeout(() => {
+            saveDraft(false);
+        }, 3000);
+
+        if (!maxWaitTimerRef.current) {
+            maxWaitTimerRef.current = setTimeout(() => {
+                saveDraft(false);
+            }, 30000);
+        }
+    }, [title, content, tags, saveDraft]);
+
+    useEffect(() => {
+        return () => {
+            if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+            if (maxWaitTimerRef.current) clearTimeout(maxWaitTimerRef.current);
+        };
+    }, []);
 
     useEffect(() => {
         const handleGlobalPaste = (e: ClipboardEvent) => {
@@ -321,15 +508,61 @@ export default function CreatePost() {
 
     return (
         <div className="flex flex-col h-[89vh]">
-            <div className="flex p-2 justify-between items-center border-b border-gray-300">
-                <div className="flex gap-1">
-                    <button className="bg-white border border-gray-300 p-1 rounded-lg font-medium text-gray-500 hover:cursor-pointer hover:text-gray-800 transition hover:border-gray-800" onClick={handleSendForm}>Publicar</button>
-                    <button className="bg-white border border-gray-300 p-1 rounded-lg font-medium text-gray-500 hover:cursor-pointer hover:text-gray-800 transition hover:border-gray-800">Salvar Rascunho</button>
-                </div>
-                <div>
+            <div className="flex p-2 justify-between items-center border-b border-gray-300 bg-white">
+                <div className="flex gap-2 items-center flex-wrap">
                     <button
+                        type="button"
+                        className="bg-sky-600 text-white font-medium p-1.5 px-3 rounded-lg hover:bg-sky-700 transition cursor-pointer shadow-sm text-sm"
+                        onClick={handleSendForm}
+                    >
+                        Publicar
+                    </button>
+                    <button
+                        type="button"
+                        className="bg-white border border-gray-300 p-1.5 px-3 rounded-lg font-medium text-gray-700 hover:text-gray-900 transition hover:border-gray-500 cursor-pointer text-sm"
+                        onClick={() => saveDraft(true)}
+                    >
+                        Salvar Rascunho
+                    </button>
+                    <div className="ml-2 flex items-center min-h-[20px]">
+                        {saveStatus === AutoSaveStatus.Saving && (
+                            <span className="text-xs text-sky-600 flex items-center gap-1.5 font-medium animate-pulse">
+                                <span className="inline-block w-2 h-2 rounded-full bg-sky-500"></span>
+                                Salvando rascunho...
+                            </span>
+                        )}
+                        {saveStatus === AutoSaveStatus.Saved && (
+                            <span className="text-xs text-emerald-600 flex items-center gap-1.5 font-medium">
+                                <span className="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+                                Salvo {lastSavedTime ? `às ${lastSavedTime}` : ""}
+                            </span>
+                        )}
+                        {saveStatus === AutoSaveStatus.Dirty && (
+                            <span className="text-xs text-amber-600 flex items-center gap-1.5 font-medium">
+                                <span className="inline-block w-2 h-2 rounded-full bg-amber-500"></span>
+                                Alterações não salvas...
+                            </span>
+                        )}
+                        {saveStatus === AutoSaveStatus.Error && (
+                            <span className="text-xs text-red-600 flex items-center gap-1.5 font-medium">
+                                <span className="inline-block w-2 h-2 rounded-full bg-red-500"></span>
+                                Erro ao salvar
+                            </span>
+                        )}
+                    </div>
+                </div>
+                <div className="flex gap-2 items-center">
+                    <button
+                        type="button"
+                        onClick={() => setDraftsModalOpen(true)}
+                        className="bg-white border border-gray-300 p-1.5 px-3 rounded-lg font-medium text-gray-700 hover:text-gray-900 transition hover:border-gray-500 cursor-pointer text-sm"
+                    >
+                        Rascunhos
+                    </button>
+                    <button
+                        type="button"
                         onClick={() => { settingsSetOpen(!settingsOpen) }}
-                        className="bg-white border border-gray-300 p-1 rounded-lg font-medium text-gray-500 hover:cursor-pointer hover:text-gray-800 transition hover:border-gray-800"
+                        className="bg-white border border-gray-300 p-1.5 px-3 rounded-lg font-medium text-gray-700 hover:text-gray-900 transition hover:border-gray-500 cursor-pointer text-sm"
                     >
                         Configurações
                     </button>
@@ -394,10 +627,17 @@ export default function CreatePost() {
                         🗙︎
                     </button>
                 </div>
-                <div className="p-2">
+                <div className="p-4 flex flex-col gap-4">
                     <div>
                         <label htmlFor="post-title" className="block text-sm font-medium text-slate-600 mb-1">Título do Post</label>
-                        <input type="text" id="post-title" placeholder="Título do Post" className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition" value={title} onChange={(e) => { setTitle(e.target.value) }} />
+                        <input
+                            type="text"
+                            id="post-title"
+                            placeholder="Título do Post"
+                            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition"
+                            value={title}
+                            onChange={(e) => { setTitle(e.target.value) }}
+                        />
                     </div>
                     <div>
                         <label htmlFor="post-tags" className="block text-sm font-medium text-slate-600 mb-1">Tags</label>
@@ -405,7 +645,8 @@ export default function CreatePost() {
                             instanceId="tag"
                             isMulti
                             options={allTags}
-                            onChange={(tags) => setTags(tags.map(tag => tag.value))}
+                            value={tags.map(t => ({ value: t, label: t }))}
+                            onChange={(selected) => setTags(selected.map(item => item.value))}
                         />
                     </div>
                 </div>
@@ -438,6 +679,13 @@ export default function CreatePost() {
                 onClose={() => setReuseModalOpen(false)}
                 onImport={handleImportAssets}
                 currentAssets={assets}
+            />
+
+            <DraftsModal
+                isOpen={draftsModalOpen}
+                onClose={() => setDraftsModalOpen(false)}
+                onSelectDraft={handleSelectDraft}
+                currentDraftId={draftId}
             />
         </div>
     )

@@ -3,6 +3,7 @@ import { markdownToHtml } from "@/app/_lib/util"
 import { notFound } from "next/navigation"
 import { isAuthenticated } from "@/app/_lib/auth"
 import DeletePostButton from "@/components/DeletePostButton"
+import Link from "next/link"
 
 export default async function Post({
     params,
@@ -17,16 +18,34 @@ export default async function Post({
     }
 
     const isAuth = await isAuthenticated()
+
+    if (!post.published && !isAuth) {
+        notFound()
+    }
+
     const contentRemark = await markdownToHtml(post.content || "")
 
     return (
         <div className="max-w-4xl mx-auto">
             <div className="m-5 bg-white border border-gray-300 rounded-lg">
                 <header className="border-b border-gray-300 p-6 pt-4 pb-6">
-                    <h1 className="text-3xl sm:text-5xl mb-3 font-bold">{post.title}</h1>
+                    <h1 className="text-3xl sm:text-5xl mb-3 font-bold">{post.title || "Rascunho sem título"}</h1>
                     <div className="flex justify-between items-center flex-wrap gap-2">
                         <div className="flex items-center gap-3">
                             <span className="text-gray-600">Publicado em {post.createdAt.toDateString()}</span>
+                            {!post.published && (
+                                <span className="text-xs font-semibold px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
+                                    Rascunho
+                                </span>
+                            )}
+                            {isAuth && !post.published && (
+                                <Link
+                                    href={`/createPost?draftId=${post.id}`}
+                                    className="text-xs font-medium text-sky-600 hover:text-sky-800 underline"
+                                >
+                                    Editar rascunho
+                                </Link>
+                            )}
                             {isAuth && <DeletePostButton postId={post.id} />}
                         </div>
                         <div className="flex gap-2">

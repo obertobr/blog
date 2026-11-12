@@ -1,23 +1,26 @@
 'use server'
 import path from "path";
 import crypto from "crypto";
-import { createPost, createTag, deletePost, deleteTag, getPostById, isAssetUsedInOtherPosts, updateTag } from "./posts"
+import { createPost, createTag, deletePost, deleteTag, getDrafts, getPostById, getPostBySlug, isAssetUsedInOtherPosts, updatePost, updateTag } from "./posts"
 import { extractAssetUrls, slugify } from "./util"
 import { mkdir, readdir, stat, unlink, writeFile } from "fs/promises"
 import { clearAdminSession, isAuthenticated, isValidPassword, setAdminSession } from "./auth"
 
 export type formPost = {
-    title: string;
+    id?: number;
+    title?: string | null;
     content: string;
     tags: string[];
     description?: string;
     slug?: string;
     assets?: string[];
+    published?: boolean;
 }
 
 export type FormPostState = {
     message: string;
     slug?: string | null;
+    postId?: number | null;
     formPost?: formPost;
 }
 
@@ -44,10 +47,13 @@ export async function createPostAction(initialState: FormPostState, formPost: fo
         return { ...initialState, message: "Não autorizado", formPost }
     }
 
-    const title = formPost.title
-    const slug = slugify(title)
-    const content = formPost.content
-    const tags = formPost.tags
+    const title = formPost.title?.trim() || ""
+    if (!title) {
+        return { ...initialState, message: "Título é obrigatório para publicar o post", formPost }
+    }
+
+    const content = formPost.content || ""
+    const tags = formPost.tags || []
 
     if (formPost.assets && formPost.assets.length > 0) {
         const unusedAssets = formPost.assets.filter(assetUrl => {
@@ -67,15 +73,165 @@ export async function createPostAction(initialState: FormPostState, formPost: fo
         }
     }
 
+    if (formPost.id) {
+        try {
+            let slug = slugify(title);
+            const existing = await getPostBySlug(slug);
+            if (existing && existing.id !== formPost.id) {
+                slug = `${slug}-${crypto.randomBytes(3).toString("hex")}`;
+            }
+
+            const post = await updatePost(formPost.id, {
+                title,
+                content,
+                slug,
+                tags,
+                published: true,
+            });
+
+            return { ...initialState, message: "Post publicado com sucesso", slug: post.slug, postId: post.id };
+        } catch (err) {
+            const message = err instanceof Error ? err.message : "Error publishing post";
+            return { ...initialState, message, formPost };
+        }
+    }
+
     try {
-        const post = await createPost(title, content, slug, tags)
-        const message = "Post created"
-        return { ...initialState, message, slug: post.slug }
+        let slug = slugify(title);
+        const existing = await getPostBySlug(slug);
+        if (existing) {
+            slug = `${slug}-${crypto.randomBytes(3).toString("hex")}`;
+        }
+
+        const post = await createPost(title, content, slug, tags, true)
+        const message = "Post criado com sucesso"
+        return { ...initialState, message, slug: post.slug, postId: post.id }
     } catch (err) {
         const message = err instanceof Error ? err.message : "Error creating post"
-
         return { ...initialState, message, formPost }
     }
+}
+
+export type SaveDraftInput = {
+    id?: number;
+    title?: string | null;
+    content: string;
+    tags: string[];
+};
+
+export type SaveDraftResult = {
+    success: boolean;
+    id?: number;
+    slug?: string;
+    message?: string;
+    error?: string;
+};
+
+export async function saveDraftAction(
+    firstOrInput: unknown,
+    secondInput?: SaveDraftInput
+): Promise<SaveDraftResult> {
+    if (!await isAuthenticated()) {
+        return { success: false, error: "Não autorizado" };
+    }
+
+    const input = (secondInput && typeof secondInput === "object" ? secondInput : firstOrInput) as SaveDraftInput;
+    if (!input || typeof input !== "object") {
+        return { success: false, error: "Dados inválidos para o rascunho" };
+    }
+
+    const title = input.title?.trim() || null;
+    const content = input.content || "";
+    const tags = input.tags || [];
+
+    try {
+        if (input.id) {
+            const updated = await updatePost(input.id, {
+                title,
+                content,
+                tags,
+                published: false,
+            });
+            return {
+                success: true,
+                id: updated.id,
+                slug: updated.slug,
+                message: "Rascunho atualizado",
+            };
+        }
+
+        let baseSlug = "rascunho";
+        if (title) {
+            baseSlug = slugify(title) || "rascunho";
+        } else if (content.trim()) {
+            const firstLine = content.trim().split("\n")[0].replace(/[#*`_>]/g, "").trim();
+            const derivedSlug = slugify(firstLine);
+            if (derivedSlug) {
+                baseSlug = derivedSlug.slice(0, 30);
+            }
+        }
+
+        const uniqueSuffix = crypto.randomBytes(4).toString("hex");
+        const slug = `${baseSlug}-${uniqueSuffix}`;
+
+        const created = await createPost(title, content, slug, tags, false);
+        return {
+            success: true,
+            id: created.id,
+            slug: created.slug,
+            message: "Rascunho salvo",
+        };
+    } catch (err) {
+        console.error("saveDraftAction error:", err);
+        const error = err instanceof Error ? err.message : "Erro ao salvar rascunho";
+        return { success: false, error };
+    }
+}
+
+export async function listDraftsAction(): Promise<{ drafts: Array<{ id: number; title: string | null; slug: string; updatedAt: string; content: string; tags: string[] }>; error?: string }> {
+    if (!await isAuthenticated()) {
+        return { drafts: [], error: "Não autorizado" };
+    }
+
+    try {
+        const drafts = await getDrafts();
+        return {
+            drafts: drafts.map(d => ({
+                id: d.id,
+                title: d.title,
+                slug: d.slug,
+                updatedAt: d.updatedAt.toISOString(),
+                content: d.content,
+                tags: d.tags.map(t => t.name),
+            })),
+        };
+    } catch (err) {
+        console.error("listDraftsAction error:", err);
+        const error = err instanceof Error ? err.message : "Erro ao listar rascunhos";
+        return { drafts: [], error };
+    }
+}
+
+export async function getPostForEditAction(id: number) {
+    if (!await isAuthenticated()) {
+        return { post: null, error: "Não autorizado" };
+    }
+
+    const post = await getPostById(id);
+    if (!post) {
+        return { post: null, error: "Post não encontrado" };
+    }
+
+    return {
+        post: {
+            id: post.id,
+            title: post.title,
+            slug: post.slug,
+            content: post.content,
+            published: post.published,
+            tags: post.tags.map(t => t.name),
+        },
+    };
 }
 
 
