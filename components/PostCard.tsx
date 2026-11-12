@@ -8,9 +8,10 @@ export type PostWithTags = Prisma.PostGetPayload<{
 
 type PostCardProps = {
     post: PostWithTags;
+    untitledLabel?: string;
 };
 
-export default function PostCard({ post }: PostCardProps) {
+export default function PostCard({ post, untitledLabel = "Sem título" }: PostCardProps) {
     return (
         <Link href={`/post/${post.slug}`} className="relative
                                                      before:content-['']
@@ -51,7 +52,7 @@ export default function PostCard({ post }: PostCardProps) {
                         ))}
                     </div>
                 </div>
-                <h2 className='text-2xl font-bold text-gray-900 dark:text-gh-text'>{post.title || "Sem título"}</h2>
+                <h2 className='text-2xl font-bold text-gray-900 dark:text-gh-text'>{post.title || untitledLabel}</h2>
                 <p className="line-clamp-2 text-gray-600 dark:text-gh-muted mt-1">{post.content}</p>
             </div>
         </Link>

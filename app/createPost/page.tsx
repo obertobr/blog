@@ -15,6 +15,7 @@ import ReuseImageModal from "@/components/ReuseImageModal"
 import DraftsModal from "@/components/DraftsModal"
 import { useTheme } from "@/components/ThemeProvider"
 import { ThemeMode } from "../_lib/theme"
+import { useLanguage } from "@/components/LanguageProvider"
 
 export const AutoSaveStatus = {
     Idle: "idle",
@@ -76,6 +77,7 @@ function getImagesFromDataTransfer(data: DataTransfer | null): File[] {
 
 export default function CreatePost() {
     const { resolvedTheme } = useTheme();
+    const { locale, t } = useLanguage();
     const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
 
     const [state, formAction] = useActionState(createPostAction, initialState);
@@ -147,7 +149,7 @@ export default function CreatePost() {
         const hasContent = currentTitle.trim().length > 0 || currentContent.trim().length > 0;
         if (!hasContent) {
             if (isManual) {
-                toast.error("Preencha o título ou conteúdo para salvar o rascunho");
+                toast.error(t.editor.fillTitleOrContent);
             }
             return;
         }
@@ -183,31 +185,31 @@ export default function CreatePost() {
                     tags: [...currentTags],
                 };
                 setSaveStatus(AutoSaveStatus.Saved);
-                const timeString = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+                const timeString = new Date().toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
                 setLastSavedTime(timeString);
                 if (isManual) {
-                    toast.success(result.message || "Rascunho salvo com sucesso!");
+                    toast.success(result.message || t.editor.draftSavedSuccess);
                 }
             } else {
                 setSaveStatus(AutoSaveStatus.Error);
                 if (isManual) {
-                    toast.error(result.error || "Erro ao salvar rascunho");
+                    toast.error(result.error || t.editor.draftSaveError);
                 }
             }
         } catch {
             setSaveStatus(AutoSaveStatus.Error);
             if (isManual) {
-                toast.error("Erro ao salvar rascunho");
+                toast.error(t.editor.draftSaveError);
             }
         } finally {
             isSavingRef.current = false;
         }
-    }, [title, content, tags]);
+    }, [title, content, tags, locale, t.editor]);
 
     const loadPost = useCallback(async (selectedId: number) => {
         const res = await getPostForEditAction(selectedId);
         if (res.error || !res.post) {
-            toast.error(res.error || "Erro ao carregar post");
+            toast.error(res.error || t.editor.loadPostError);
             return;
         }
 
@@ -239,11 +241,11 @@ export default function CreatePost() {
         }
         await convert(post.content || "");
         setSaveStatus(AutoSaveStatus.Saved);
-    }, [convert]);
+    }, [convert, t.editor]);
 
     const handleNewPost = () => {
         if (title.trim() || content.trim()) {
-            if (!confirm("Deseja iniciar um novo post em branco?")) return;
+            if (!confirm(t.editor.newPostConfirm)) return;
         }
 
         postIdRef.current = null;
@@ -268,20 +270,20 @@ export default function CreatePost() {
         }
         setPreviewHtml("");
         setSaveStatus(AutoSaveStatus.Idle);
-        toast.success("Novo post iniciado");
+        toast.success(t.editor.newPostStarted);
     };
 
     const handleUnpublish = async () => {
         if (!postIdRef.current) return;
-        if (!confirm("Deseja mover este post de volta para rascunhos? Ele deixará de aparecer na página inicial.")) return;
+        if (!confirm(t.editor.unpublishConfirm)) return;
 
         const res = await unpublishPostAction(postIdRef.current);
         if (res.success) {
             setIsPublishedPost(false);
             isPublishedRef.current = false;
-            toast.success("Post despublicado e movido para rascunhos!");
+            toast.success(t.editor.unpublishSuccess);
         } else {
-            toast.error(res.error || "Erro ao despublicar post");
+            toast.error(res.error || t.editor.unpublishError);
         }
     };
 
@@ -289,7 +291,7 @@ export default function CreatePost() {
         const imageFiles = files.filter(f => f.type.startsWith("image/"));
         if (imageFiles.length === 0) return;
 
-        const toastId = toast.loading("Enviando imagem...");
+        const toastId = toast.loading(t.editor.uploadingImage);
         try {
             const result = await saveAssetAction(null, imageFiles);
 
@@ -347,18 +349,18 @@ export default function CreatePost() {
                     });
                 }
 
-                toast.success("Imagem adicionada com sucesso!", { id: toastId });
+                toast.success(t.editor.imageAddedSuccess, { id: toastId });
             } else {
                 toast.dismiss(toastId);
             }
         } catch {
-            toast.error("Erro ao enviar imagem", { id: toastId });
+            toast.error(t.editor.imageUploadError, { id: toastId });
         }
-    }, [convert]);
+    }, [convert, t.editor]);
 
     const handleSendForm = () => {
         if (!title.trim()) {
-            toast.error("Defina um título nas Configurações para publicar o post");
+            toast.error(t.editor.defineTitleToPublish);
             settingsSetOpen(true);
             return;
         }
@@ -539,7 +541,7 @@ export default function CreatePost() {
             content.includes(encoded) ||
             content.includes(url)
         ) {
-            toast.error("Não é possível excluir: a imagem está sendo usada no texto do editor. Remova-a do texto antes de excluir.");
+            toast.error(t.editor.cannotDeleteUsedImage);
             return;
         }
 
@@ -577,7 +579,7 @@ export default function CreatePost() {
                         className="bg-sky-600 text-white font-medium p-1.5 px-3 rounded-lg hover:bg-sky-700 transition cursor-pointer shadow-sm text-sm"
                         onClick={handleSendForm}
                     >
-                        {isPublishedPost ? "Salvar Alterações" : "Publicar"}
+                        {isPublishedPost ? t.editor.saveChanges : t.editor.publish}
                     </button>
                     {!isPublishedPost ? (
                         <button
@@ -585,7 +587,7 @@ export default function CreatePost() {
                             className="bg-white dark:bg-gh-subtle border border-gray-300 dark:border-gh-border p-1.5 px-3 rounded-lg font-medium text-gray-700 dark:text-gh-text hover:text-gray-900 dark:hover:text-white transition hover:border-gray-500 dark:hover:border-gh-muted cursor-pointer text-sm"
                             onClick={() => saveDraft(true)}
                         >
-                            Salvar Rascunho
+                            {t.editor.saveDraft}
                         </button>
                     ) : (
                         <button
@@ -593,7 +595,7 @@ export default function CreatePost() {
                             className="bg-white dark:bg-gh-subtle border border-amber-300 dark:border-amber-700 p-1.5 px-3 rounded-lg font-medium text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition cursor-pointer text-sm"
                             onClick={handleUnpublish}
                         >
-                            Despublicar
+                            {t.editor.unpublish}
                         </button>
                     )}
                     {postId !== null && (
@@ -602,32 +604,32 @@ export default function CreatePost() {
                             className="bg-white dark:bg-gh-subtle border border-gray-300 dark:border-gh-border p-1.5 px-3 rounded-lg font-medium text-gray-600 dark:text-gh-muted hover:text-gray-900 dark:hover:text-white transition hover:border-gray-500 dark:hover:border-gh-muted cursor-pointer text-sm"
                             onClick={handleNewPost}
                         >
-                            Novo Post
+                            {t.editor.newPost}
                         </button>
                     )}
                     <div className="ml-2 flex items-center min-h-[20px]">
                         {saveStatus === AutoSaveStatus.Saving && (
                             <span className="text-xs text-sky-600 dark:text-gh-blue flex items-center gap-1.5 font-medium animate-pulse">
                                 <span className="inline-block w-2 h-2 rounded-full bg-sky-500"></span>
-                                Salvando rascunho...
+                                {t.editor.savingDraft}
                             </span>
                         )}
                         {saveStatus === AutoSaveStatus.Saved && (
                             <span className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 font-medium">
                                 <span className="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
-                                Salvo {lastSavedTime ? `às ${lastSavedTime}` : ""}
+                                {t.editor.saved} {lastSavedTime ? `${t.editor.at} ${lastSavedTime}` : ""}
                             </span>
                         )}
                         {saveStatus === AutoSaveStatus.Dirty && (
                             <span className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5 font-medium">
                                 <span className="inline-block w-2 h-2 rounded-full bg-amber-500"></span>
-                                Alterações não salvas...
+                                {t.editor.unsavedChanges}
                             </span>
                         )}
                         {saveStatus === AutoSaveStatus.Error && (
                             <span className="text-xs text-red-600 dark:text-red-400 flex items-center gap-1.5 font-medium">
                                 <span className="inline-block w-2 h-2 rounded-full bg-red-500"></span>
-                                Erro ao salvar
+                                {t.editor.saveError}
                             </span>
                         )}
                     </div>
@@ -638,14 +640,14 @@ export default function CreatePost() {
                         onClick={() => setDraftsModalOpen(true)}
                         className="bg-white dark:bg-gh-subtle border border-gray-300 dark:border-gh-border p-1.5 px-3 rounded-lg font-medium text-gray-700 dark:text-gh-text hover:text-gray-900 dark:hover:text-white transition hover:border-gray-500 dark:hover:border-gh-muted cursor-pointer text-sm"
                     >
-                        Rascunhos
+                        {t.editor.drafts}
                     </button>
                     <button
                         type="button"
                         onClick={() => { settingsSetOpen(!settingsOpen) }}
                         className="bg-white dark:bg-gh-subtle border border-gray-300 dark:border-gh-border p-1.5 px-3 rounded-lg font-medium text-gray-700 dark:text-gh-text hover:text-gray-900 dark:hover:text-white transition hover:border-gray-500 dark:hover:border-gh-muted cursor-pointer text-sm"
                     >
-                        Configurações
+                        {t.editor.settings}
                     </button>
                 </div>
             </div>
@@ -675,7 +677,7 @@ export default function CreatePost() {
                 {isDragging && (
                     <div className="absolute inset-0 bg-sky-500/10 border-2 border-dashed border-sky-500 z-40 flex items-center justify-center pointer-events-none backdrop-blur-[1px]">
                         <span className="bg-white dark:bg-gh-surface px-4 py-2 rounded-lg shadow-md text-sky-700 dark:text-gh-blue font-semibold text-base border border-sky-200 dark:border-gh-border">
-                            Solte a imagem aqui para adicionar ao post
+                            {t.editor.dropImageHere}
                         </span>
                     </div>
                 )}
@@ -704,28 +706,29 @@ export default function CreatePost() {
             <div onClick={() => { settingsSetOpen(!settingsOpen) }} className={`fixed inset-0 bg-black opacity-40 z-20 ${!settingsOpen && "hidden"}`}></div>
             <div className={`fixed top-0 right-0 h-full w-full max-w-md bg-white dark:bg-gh-surface border-l border-gray-200 dark:border-gh-border shadow-2xl z-30 transform transition-transform duration-300 ease-in-out flex flex-col ${!settingsOpen && "translate-x-full"}`}>
                 <div className="p-4 border-b border-gray-300 dark:border-gh-border flex justify-between items-center bg-gray-50 dark:bg-gh-subtle flex-shrink-0">
-                    <h2 className="text-lg font-semibold text-gray-800 dark:text-gh-text">Configurações do Post</h2>
+                    <h2 className="text-lg font-semibold text-gray-800 dark:text-gh-text">{t.editor.postSettings}</h2>
                     <button id="close-settings-btn" className="p-2 cursor-pointer text-gray-600 dark:text-gh-muted hover:text-black dark:hover:text-white" onClick={() => { settingsSetOpen(!settingsOpen) }}>
                         🗙︎
                     </button>
                 </div>
                 <div className="p-4 flex flex-col gap-4">
                     <div>
-                        <label htmlFor="post-title" className="block text-sm font-medium text-slate-600 dark:text-gh-muted mb-1">Título do Post</label>
+                        <label htmlFor="post-title" className="block text-sm font-medium text-slate-600 dark:text-gh-muted mb-1">{t.editor.postTitleLabel}</label>
                         <input
                             type="text"
                             id="post-title"
-                            placeholder="Título do Post"
+                            placeholder={t.editor.postTitlePlaceholder}
                             className="w-full px-4 py-2 border border-slate-300 dark:border-gh-border bg-white dark:bg-gh-canvas text-gray-900 dark:text-gh-text placeholder-gray-400 dark:placeholder-gh-muted rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition"
                             value={title}
                             onChange={(e) => { setTitle(e.target.value) }}
                         />
                     </div>
                     <div>
-                        <label htmlFor="post-tags" className="block text-sm font-medium text-slate-600 dark:text-gh-muted mb-1">Tags</label>
+                        <label htmlFor="post-tags" className="block text-sm font-medium text-slate-600 dark:text-gh-muted mb-1">{t.editor.tagsLabel}</label>
                         <CreatableSelect
                             instanceId="tag"
                             isMulti
+                            placeholder={t.editor.tagsPlaceholder}
                             options={allTags}
                             value={tags.map(t => ({ value: t, label: t }))}
                             onChange={(selected) => setTags(selected.map(item => item.value))}
@@ -766,11 +769,11 @@ export default function CreatePost() {
                 </div>
             </div>
             <div className={`fixed bottom-0 right-0 h-full w-full max-h-40 border-t border-gray-300 dark:border-gh-border bg-white dark:bg-gh-surface shadow-2xl z-30 transform transition-transform duration-300 ease-in-out ${!assetsOpen && "translate-y-full"}`}>
-                <button className="cursor-pointer font-medium text-gray-400 dark:text-gh-muted absolute left-[50%] -top-6.5 bg-white dark:bg-gh-surface border border-gray-300 dark:border-gh-border border-b-0 rounded-t-lg -translate-x-1/2 hover:text-gray-700 dark:hover:text-white hover:border-gray-700 dark:hover:border-gh-muted transition-all" onClick={() => { assetsSetOpen(!assetsOpen) }}> Assets </button>
+                <button className="cursor-pointer font-medium text-gray-400 dark:text-gh-muted absolute left-[50%] -top-6.5 bg-white dark:bg-gh-surface border border-gray-300 dark:border-gh-border border-b-0 rounded-t-lg -translate-x-1/2 hover:text-gray-700 dark:hover:text-white hover:border-gray-700 dark:hover:border-gh-muted transition-all" onClick={() => { assetsSetOpen(!assetsOpen) }}>&nbsp;{t.editor.assetsTab}&nbsp;</button>
                 <div className="flex h-full p-2 gap-2 overflow-x-auto overflow-y-hidden">
                     <div className="bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-gh-blue border-2 border-dashed border-sky-200 dark:border-sky-800/60 rounded-lg font-medium flex-shrink-0 flex flex-col justify-evenly">
                         <label htmlFor="image-upload" className="w-full cursor-pointer flex items-center justify-center h-full p-2 hover:bg-sky-100 dark:hover:bg-sky-900/40 transition">
-                            <span>Upload imagem</span>
+                            <span>{t.editor.uploadImage}</span>
                         </label>
                         <input type="file" id="image-upload" className="hidden" multiple accept="image/*" onChange={handleImageInput}></input>
                         <hr className="border-dashed border-sky-200 dark:border-sky-800/60 border-t-2" />
@@ -779,7 +782,7 @@ export default function CreatePost() {
                             onClick={() => setReuseModalOpen(true)}
                             className="w-full cursor-pointer flex items-center justify-center h-full p-2 hover:bg-sky-100 dark:hover:bg-sky-900/40 transition"
                         >
-                            Reutilizar imagem
+                            {t.editor.reuseImage}
                         </button>
                     </div>
                     {assets.map((asset, index) => (

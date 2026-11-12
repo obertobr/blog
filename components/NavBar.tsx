@@ -5,10 +5,13 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import toast from "react-hot-toast";
 import { getAuthStatusAction, loginAction, logoutAction } from "@/app/_lib/actions";
+import { useLanguage } from "./LanguageProvider";
+import LanguageToggle from "./LanguageToggle";
 import ThemeToggle from "./ThemeToggle";
 
 export default function NavBar() {
     const router = useRouter();
+    const { t } = useLanguage();
     const [isPending, startTransition] = useTransition();
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
@@ -55,10 +58,10 @@ export default function NavBar() {
                 setIsLoggedIn(true);
                 setModalOpen(false);
                 setPassword("");
-                toast.success("Logado com sucesso!");
+                toast.success(t.nav.signedInSuccess);
                 router.refresh();
             } else {
-                toast.error(result.error || "Senha incorreta");
+                toast.error(result.error || t.nav.incorrectPassword);
             }
         });
     };
@@ -67,7 +70,7 @@ export default function NavBar() {
         startTransition(async () => {
             await logoutAction();
             setIsLoggedIn(false);
-            toast.success("Desconectado!");
+            toast.success(t.nav.signedOutSuccess);
             router.push("/");
             router.refresh();
         });
@@ -92,40 +95,34 @@ export default function NavBar() {
                     </Link>
 
                     <Link href="/" className="hover:font-bold transition-all text-gray-700 dark:text-gh-text hover:text-black dark:hover:text-white">
-                        Recentes
+                        {t.nav.recent}
                     </Link>
                     <Link href="/relevant" className="hover:font-bold transition-all text-gray-700 dark:text-gh-text hover:text-black dark:hover:text-white">
-                        Relevantes
+                        {t.nav.relevant}
                     </Link>
 
                     {isLoggedIn && (
                         <>
                             <Link href="/createPost" className="hover:font-bold transition-all text-gray-700 dark:text-gh-text hover:text-black dark:hover:text-white">
-                                Criar Post
+                                {t.nav.createPost}
                             </Link>
                             <Link href="/adminPanel" className="hover:font-bold transition-all text-gray-700 dark:text-gh-text hover:text-black dark:hover:text-white">
-                                Admin Tags
+                                {t.nav.adminTags}
                             </Link>
                             <button
                                 type="button"
                                 onClick={handleLogout}
                                 className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:font-bold cursor-pointer transition-all"
                             >
-                                Sair
+                                {t.nav.signOut}
                             </button>
                         </>
                     )}
                 </div>
 
-                <div className="flex gap-3 items-center">
+                <div className="flex gap-2.5 items-center">
                     <ThemeToggle />
-                    <select
-                        aria-label="Selecionar idioma"
-                        className="bg-gray-50 dark:bg-gh-subtle border border-gray-300 dark:border-gh-border text-gray-900 dark:text-gh-text text-xs rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-1.5 cursor-pointer"
-                    >
-                        <option>pt-br</option>
-                        <option>en</option>
-                    </select>
+                    <LanguageToggle />
                 </div>
             </nav>
 
@@ -133,7 +130,7 @@ export default function NavBar() {
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-[2px] z-50 flex items-center justify-center p-4">
                     <div className="bg-white dark:bg-gh-surface rounded-lg shadow-xl w-full max-w-sm p-5 border border-gray-200 dark:border-gh-border">
                         <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-lg font-bold text-gray-800 dark:text-gh-text">Acesso Administrativo</h2>
+                            <h2 className="text-lg font-bold text-gray-800 dark:text-gh-text">{t.nav.adminAccess}</h2>
                             <button
                                 type="button"
                                 onClick={() => { setModalOpen(false); setPassword(""); }}
@@ -145,7 +142,7 @@ export default function NavBar() {
                         <form onSubmit={handleLogin} className="flex flex-col gap-3">
                             <input
                                 type="password"
-                                placeholder="Senha administrativa"
+                                placeholder={t.nav.adminPasswordPlaceholder}
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 autoFocus
@@ -157,14 +154,14 @@ export default function NavBar() {
                                     onClick={() => { setModalOpen(false); setPassword(""); }}
                                     className="px-3 py-1.5 text-sm rounded-lg text-gray-600 dark:text-gh-muted hover:bg-gray-100 dark:hover:bg-gh-subtle transition cursor-pointer"
                                 >
-                                    Cancelar
+                                    {t.nav.cancel}
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={isPending}
                                     className="px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition cursor-pointer disabled:opacity-50"
                                 >
-                                    {isPending ? "Entrando..." : "Entrar"}
+                                    {isPending ? t.nav.signingIn : t.nav.signIn}
                                 </button>
                             </div>
                         </form>

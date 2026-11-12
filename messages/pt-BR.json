@@ -1,0 +1,133 @@
+{
+  "nav": {
+    "recent": "Recentes",
+    "relevant": "Relevantes",
+    "createPost": "Criar Post",
+    "adminTags": "Admin Tags",
+    "signOut": "Sair",
+    "adminAccess": "Acesso Administrativo",
+    "adminPasswordPlaceholder": "Senha administrativa",
+    "cancel": "Cancelar",
+    "signIn": "Entrar",
+    "signingIn": "Entrando...",
+    "signedInSuccess": "Logado com sucesso!",
+    "incorrectPassword": "Senha incorreta",
+    "signedOutSuccess": "Desconectado!",
+    "selectLanguageLabel": "Selecionar idioma"
+  },
+  "theme": {
+    "label": "Tema",
+    "light": "Claro",
+    "dark": "Escuro",
+    "ariaLabel": "Alternar tema visual"
+  },
+  "postCard": {
+    "untitled": "Sem título"
+  },
+  "post": {
+    "untitledDraft": "Rascunho sem título",
+    "published": "Publicado",
+    "draft": "Rascunho",
+    "editPost": "Editar Post",
+    "editDraft": "Editar Rascunho",
+    "deleteConfirm": "Tem certeza que deseja excluir este post?",
+    "deleteError": "Erro ao excluir post",
+    "deleting": "Excluindo...",
+    "deletePost": "Excluir Post"
+  },
+  "relevant": {
+    "title": "Posts Relevantes",
+    "description": "Esta seção exibirá posts recomendados com base nas suas leituras e curtidas."
+  },
+  "admin": {
+    "tagsTitle": "Tags"
+  },
+  "editor": {
+    "saveChanges": "Salvar Alterações",
+    "publish": "Publicar",
+    "saveDraft": "Salvar Rascunho",
+    "unpublish": "Despublicar",
+    "newPost": "Novo Post",
+    "savingDraft": "Salvando rascunho...",
+    "saved": "Salvo",
+    "at": "às",
+    "unsavedChanges": "Alterações não salvas...",
+    "saveError": "Erro ao salvar",
+    "drafts": "Rascunhos",
+    "settings": "Configurações",
+    "dropImageHere": "Solte a imagem aqui para adicionar ao post",
+    "postSettings": "Configurações do Post",
+    "postTitleLabel": "Título do Post",
+    "postTitlePlaceholder": "Título do Post",
+    "tagsLabel": "Tags",
+    "tagsPlaceholder": "Selecione ou digite...",
+    "assetsTab": "Assets",
+    "uploadImage": "Upload imagem",
+    "reuseImage": "Reutilizar imagem",
+    "fillTitleOrContent": "Preencha o título ou conteúdo para salvar o rascunho",
+    "draftSavedSuccess": "Rascunho salvo com sucesso!",
+    "draftSaveError": "Erro ao salvar rascunho",
+    "loadPostError": "Erro ao carregar post",
+    "newPostConfirm": "Deseja iniciar um novo post em branco?",
+    "newPostStarted": "Novo post iniciado",
+    "unpublishConfirm": "Deseja mover este post de volta para rascunhos? Ele deixará de aparecer na página inicial.",
+    "unpublishSuccess": "Post despublicado e movido para rascunhos!",
+    "unpublishError": "Erro ao despublicar post",
+    "uploadingImage": "Enviando imagem...",
+    "imageAddedSuccess": "Imagem adicionada com sucesso!",
+    "imageUploadError": "Erro ao enviar imagem",
+    "defineTitleToPublish": "Defina um título nas Configurações para publicar o post",
+    "cannotDeleteUsedImage": "Não é possível excluir: a imagem está sendo usada no texto do editor. Remova-a do texto antes de excluir."
+  },
+  "draftsModal": {
+    "title": "Meus Rascunhos",
+    "subtitle": "Selecione um rascunho salvo para continuar a edição",
+    "loading": "Carregando rascunhos...",
+    "empty": "Nenhum rascunho encontrado. Os rascunhos são salvos automaticamente enquanto você escreve.",
+    "untitledDraft": "Rascunho sem título",
+    "inEditing": "Em edição",
+    "noContent": "Sem conteúdo",
+    "lastChanged": "Última alteração:",
+    "tagsPrefix": "Tags:",
+    "deleteTooltip": "Excluir rascunho",
+    "deleteConfirm": "Deseja realmente excluir este rascunho?",
+    "deletedSuccess": "Rascunho excluído",
+    "savedDraftsSuffix": "rascunho(s) salvo(s)",
+    "close": "Fechar"
+  },
+  "reuseImageModal": {
+    "title": "Reutilizar Imagens",
+    "subtitle": "Selecione imagens já salvas no site para adicionar a este post",
+    "searchPlaceholder": "Pesquisar por nome da imagem...",
+    "loading": "Carregando imagens...",
+    "emptyServer": "Nenhuma imagem salva no servidor ainda.",
+    "emptySearch": "Nenhuma imagem encontrada com esse termo de busca.",
+    "alreadyInPost": "Já no post",
+    "alreadyAddedTitle": "Já adicionada aos assets",
+    "clickToAddTitle": "Clique na imagem para adicionar aos assets",
+    "batchSelectTitle": "Selecionar para importar em lote",
+    "imagesLabel": "imagem(ns)",
+    "selectedLabel": "selecionada(s)",
+    "cancel": "Cancelar",
+    "importLabel": "Importar",
+    "loadError": "Erro ao carregar imagens",
+    "alreadyInAssetsBatch": "As imagens selecionadas já estão na gaveta de assets.",
+    "alreadyInAssetsSingle": "Esta imagem já está nos assets.",
+    "importedSuccessSuffix": "imagem(ns) importada(s)!",
+    "addedSuccess": "Imagem adicionada aos assets!"
+  },
+  "asset": {
+    "copy": "Copiar",
+    "copiedMarkdown": "Markdown copiado!"
+  },
+  "relativeDate": {
+    "justNow": "agora mesmo",
+    "yearSingular": "ano",
+    "yearPlural": "anos",
+    "monthSingular": "mês",
+    "monthPlural": "meses",
+    "compositeSingleTemplate": "há {years}",
+    "compositeTemplate": "há {years} e {months}"
+  }
+}
+

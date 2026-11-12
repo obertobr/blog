@@ -1,20 +1,20 @@
+import { getDictionary, Locale, parseLocale } from "./i18n";
+
 export function formatRelativeTime(
     date: Date | string | number,
-    locale: string = "pt-BR",
+    locale: string = Locale.PtBr,
     nowDate: Date = new Date()
 ): string {
+    const resolvedLocale = parseLocale(locale) ?? Locale.PtBr;
+    const { relativeDate } = getDictionary(resolvedLocale);
     const d = typeof date === "string" || typeof date === "number" ? new Date(date) : date;
     const diffInSeconds = Math.floor((nowDate.getTime() - d.getTime()) / 1000);
 
-    if (diffInSeconds < 0) {
-        return "agora mesmo";
+    if (diffInSeconds < 0 || diffInSeconds < 60) {
+        return relativeDate.justNow;
     }
 
-    if (diffInSeconds < 60) {
-        return "agora mesmo";
-    }
-
-    const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "always" });
+    const rtf = new Intl.RelativeTimeFormat(resolvedLocale, { numeric: "always" });
 
     const diffInMinutes = Math.floor(diffInSeconds / 60);
     if (diffInMinutes < 60) {
@@ -52,17 +52,16 @@ export function formatRelativeTime(
     }
 
     if (years >= 1) {
-        if (locale.startsWith("en")) {
-            const yearStr = years === 1 ? "1 year" : `${years} years`;
-            if (months === 0) return `${yearStr} ago`;
-            const monthStr = months === 1 ? "1 month" : `${months} months`;
-            return `${yearStr} and ${monthStr} ago`;
+        const yearUnit = years === 1 ? relativeDate.yearSingular : relativeDate.yearPlural;
+        const yearStr = `${years} ${yearUnit}`;
+        if (months === 0) {
+            return relativeDate.compositeSingleTemplate.replace("{years}", yearStr);
         }
-
-        const yearStr = years === 1 ? "1 ano" : `${years} anos`;
-        if (months === 0) return `há ${yearStr}`;
-        const monthStr = months === 1 ? "1 mês" : `${months} meses`;
-        return `há ${yearStr} e ${monthStr}`;
+        const monthUnit = months === 1 ? relativeDate.monthSingular : relativeDate.monthPlural;
+        const monthStr = `${months} ${monthUnit}`;
+        return relativeDate.compositeTemplate
+            .replace("{years}", yearStr)
+            .replace("{months}", monthStr);
     }
 
     return rtf.format(-diffInMonths, "month");
@@ -70,12 +69,12 @@ export function formatRelativeTime(
 
 export function formatFullDate(
     date: Date | string | number,
-    locale: string = "pt-BR"
+    locale: string = Locale.PtBr
 ): string {
+    const resolvedLocale = parseLocale(locale) ?? Locale.PtBr;
     const d = typeof date === "string" || typeof date === "number" ? new Date(date) : date;
-    return new Intl.DateTimeFormat(locale, {
+    return new Intl.DateTimeFormat(resolvedLocale, {
         dateStyle: "long",
         timeStyle: "short",
     }).format(d);
 }
-

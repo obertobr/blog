@@ -9,8 +9,8 @@
 | **05** | **Edição e exclusão de posts** | Permitir que o administrador edite título/conteúdo/tags e remova posts existentes | ✅ Concluído |
 | **06** | **Sistema de datas relativas** | Exibir datas no formato "há 1 hora", "há 1 semana", "há 1 mês" usando API nativa de internacionalização | ✅ Concluído |
 | **07** | **Tema escuro e claro (Dark/Light Mode)** | Conectar o seletor da NavBar, aplicar classes dark mode e persistir escolha do usuário | ✅ Concluído |
-| **08** | **Sistema de idiomas (i18n: pt-BR / en)** | Conectar o seletor da NavBar, traduzir textos da interface e adaptar formatação de data | ⏳ Em Andamento |
-| **09** | **Sistema de likes nos posts** | Botão de curtir com contagem em tempo real e controle de votos por sessão/usuário | ⏳ Pendente |
+| **08** | **Sistema de idiomas (i18n: pt-BR / en)** | Conectar o seletor da NavBar, traduzir textos da interface e adaptar formatação de data | ✅ Concluído |
+| **09** | **Sistema de likes nos posts** | Botão de curtir com contagem em tempo real e controle de votos por sessão/usuário | ⏳ Em Andamento |
 | **10** | **Sistema de comentários** | Formulário e listagem de comentários em cada post, com moderação administrativa | ⏳ Pendente |
 | **11** | **Filtro por Tags e Pesquisa na Home** | Busca por título/conteúdo e filtro de listagem ao clicar nas tags | ⏳ Pendente |
 | **12** | **Página de posts relevantes (`/relevant`)** | Feed de recomendação baseado no histórico de posts lidos e curtidos pelo visitante | ⏳ Pendente |

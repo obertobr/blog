@@ -1,0 +1,133 @@
+{
+  "nav": {
+    "recent": "Recent",
+    "relevant": "Relevant",
+    "createPost": "New Post",
+    "adminTags": "Manage Tags",
+    "signOut": "Sign out",
+    "adminAccess": "Admin Access",
+    "adminPasswordPlaceholder": "Admin password",
+    "cancel": "Cancel",
+    "signIn": "Sign in",
+    "signingIn": "Signing in...",
+    "signedInSuccess": "Signed in successfully!",
+    "incorrectPassword": "Incorrect password",
+    "signedOutSuccess": "Signed out!",
+    "selectLanguageLabel": "Select language"
+  },
+  "theme": {
+    "label": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "ariaLabel": "Switch visual theme"
+  },
+  "postCard": {
+    "untitled": "Untitled"
+  },
+  "post": {
+    "untitledDraft": "Untitled Draft",
+    "published": "Published",
+    "draft": "Draft",
+    "editPost": "Edit Post",
+    "editDraft": "Edit Draft",
+    "deleteConfirm": "Are you sure you want to delete this post?",
+    "deleteError": "Error deleting post",
+    "deleting": "Deleting...",
+    "deletePost": "Delete Post"
+  },
+  "relevant": {
+    "title": "Relevant Posts",
+    "description": "This section will display recommended posts based on your reads and likes."
+  },
+  "admin": {
+    "tagsTitle": "Tags"
+  },
+  "editor": {
+    "saveChanges": "Save Changes",
+    "publish": "Publish",
+    "saveDraft": "Save Draft",
+    "unpublish": "Unpublish",
+    "newPost": "New Post",
+    "savingDraft": "Saving draft...",
+    "saved": "Saved",
+    "at": "at",
+    "unsavedChanges": "Unsaved changes...",
+    "saveError": "Save error",
+    "drafts": "Drafts",
+    "settings": "Settings",
+    "dropImageHere": "Drop the image here to add to the post",
+    "postSettings": "Post Settings",
+    "postTitleLabel": "Post Title",
+    "postTitlePlaceholder": "Post Title",
+    "tagsLabel": "Tags",
+    "tagsPlaceholder": "Select or type...",
+    "assetsTab": "Assets",
+    "uploadImage": "Upload image",
+    "reuseImage": "Reuse image",
+    "fillTitleOrContent": "Fill in the title or content to save the draft",
+    "draftSavedSuccess": "Draft saved successfully!",
+    "draftSaveError": "Error saving draft",
+    "loadPostError": "Error loading post",
+    "newPostConfirm": "Do you want to start a new blank post?",
+    "newPostStarted": "New post started",
+    "unpublishConfirm": "Do you want to move this post back to drafts? It will no longer appear on the home page.",
+    "unpublishSuccess": "Post unpublished and moved to drafts!",
+    "unpublishError": "Error unpublishing post",
+    "uploadingImage": "Uploading image...",
+    "imageAddedSuccess": "Image added successfully!",
+    "imageUploadError": "Error uploading image",
+    "defineTitleToPublish": "Set a title in Settings to publish the post",
+    "cannotDeleteUsedImage": "Cannot delete: the image is currently used in the editor text. Remove it from the text first."
+  },
+  "draftsModal": {
+    "title": "My Drafts",
+    "subtitle": "Select a saved draft to continue editing",
+    "loading": "Loading drafts...",
+    "empty": "No drafts found. Drafts are saved automatically while you write.",
+    "untitledDraft": "Untitled draft",
+    "inEditing": "Editing",
+    "noContent": "No content",
+    "lastChanged": "Last updated:",
+    "tagsPrefix": "Tags:",
+    "deleteTooltip": "Delete draft",
+    "deleteConfirm": "Do you really want to delete this draft?",
+    "deletedSuccess": "Draft deleted",
+    "savedDraftsSuffix": "saved draft(s)",
+    "close": "Close"
+  },
+  "reuseImageModal": {
+    "title": "Reuse Images",
+    "subtitle": "Select images already saved on the server to add to this post",
+    "searchPlaceholder": "Search by image name...",
+    "loading": "Loading images...",
+    "emptyServer": "No images saved on the server yet.",
+    "emptySearch": "No images found matching your search.",
+    "alreadyInPost": "In post",
+    "alreadyAddedTitle": "Already added to assets",
+    "clickToAddTitle": "Click the image to add to assets",
+    "batchSelectTitle": "Select for batch import",
+    "imagesLabel": "image(s)",
+    "selectedLabel": "selected",
+    "cancel": "Cancel",
+    "importLabel": "Import",
+    "loadError": "Error loading images",
+    "alreadyInAssetsBatch": "The selected images are already in the assets drawer.",
+    "alreadyInAssetsSingle": "This image is already in assets.",
+    "importedSuccessSuffix": "image(s) imported!",
+    "addedSuccess": "Image added to assets!"
+  },
+  "asset": {
+    "copy": "Copy",
+    "copiedMarkdown": "Markdown copied!"
+  },
+  "relativeDate": {
+    "justNow": "just now",
+    "yearSingular": "year",
+    "yearPlural": "years",
+    "monthSingular": "month",
+    "monthPlural": "months",
+    "compositeSingleTemplate": "{years} ago",
+    "compositeTemplate": "{years} and {months} ago"
+  }
+}
+

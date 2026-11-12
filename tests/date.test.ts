@@ -57,6 +57,20 @@ describe("formatRelativeTime", () => {
         const twoYearsFourMonthsAgo = new Date("2024-07-12T12:00:00.000Z");
         expect(formatRelativeTime(twoYearsFourMonthsAgo, "pt-BR", baseNow)).toBe("há 2 anos e 4 meses");
     });
+
+    it("formats relative dates properly in English", () => {
+        const justNow = new Date("2026-11-12T11:59:40.000Z");
+        expect(formatRelativeTime(justNow, "en", baseNow)).toBe("just now");
+
+        const fiveMinutesAgo = new Date("2026-11-12T11:55:00.000Z");
+        expect(formatRelativeTime(fiveMinutesAgo, "en", baseNow)).toBe("5 minutes ago");
+
+        const oneYearAgo = new Date("2025-11-12T12:00:00.000Z");
+        expect(formatRelativeTime(oneYearAgo, "en", baseNow)).toBe("1 year ago");
+
+        const oneYearThreeMonthsAgo = new Date("2025-08-12T12:00:00.000Z");
+        expect(formatRelativeTime(oneYearThreeMonthsAgo, "en", baseNow)).toBe("1 year and 3 months ago");
+    });
 });
 
 describe("formatFullDate", () => {

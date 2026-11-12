@@ -5,8 +5,10 @@ import { getTags } from "../_lib/posts";
 import { Tag } from "@prisma/client";
 import { deleteTagAction, saveTagAction } from "../_lib/actions";
 import toast from "react-hot-toast"
+import { useLanguage } from "@/components/LanguageProvider"
 
 export default function AdminPanel() {
+    const { t } = useLanguage();
     const [tags, setTags] = useState<Tag[]>([])
     const debounceTimers = useRef<{ [key: number]: NodeJS.Timeout }>({})
 
@@ -104,7 +106,7 @@ export default function AdminPanel() {
 
     return (
         <div className="flex flex-col items-center">
-            <h1 className="text-4xl font-bold m-3 text-gray-900 dark:text-gh-text">Tags</h1>
+            <h1 className="text-4xl font-bold m-3 text-gray-900 dark:text-gh-text">{t.admin.tagsTitle}</h1>
 
             <div className="border border-gray-300 dark:border-gh-border bg-white dark:bg-gh-surface rounded-lg p-2 flex flex-col gap-2 min-w-[300px] shadow-xs">
                 {tags.map(tag => (

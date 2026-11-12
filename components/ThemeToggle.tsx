@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { ThemeMode } from "@/app/_lib/theme";
+import { useLanguage } from "./LanguageProvider";
 import { useTheme } from "./ThemeProvider";
 
 function SunIcon({ className = "w-4 h-4" }: { className?: string }) {
@@ -82,13 +83,13 @@ function ChevronDownIcon({ className = "w-3 h-3" }: { className?: string }) {
 
 interface ThemeOptionConfig {
     mode: ThemeMode;
-    label: string;
+    labelKey: "light" | "dark";
     icon: React.ComponentType<{ className?: string }>;
 }
 
 const THEME_OPTIONS: readonly ThemeOptionConfig[] = [
-    { mode: ThemeMode.Light, label: "Claro", icon: SunIcon },
-    { mode: ThemeMode.Dark, label: "Escuro", icon: MoonIcon },
+    { mode: ThemeMode.Light, labelKey: "light", icon: SunIcon },
+    { mode: ThemeMode.Dark, labelKey: "dark", icon: MoonIcon },
 ] as const;
 
 const THEME_ICON_REGISTRY: Record<ThemeMode, React.ComponentType<{ className?: string }>> = {
@@ -96,8 +97,14 @@ const THEME_ICON_REGISTRY: Record<ThemeMode, React.ComponentType<{ className?: s
     [ThemeMode.Dark]: MoonIcon,
 };
 
+const THEME_LABEL_KEY_REGISTRY: Record<ThemeMode, "light" | "dark"> = {
+    [ThemeMode.Light]: "light",
+    [ThemeMode.Dark]: "dark",
+};
+
 export default function ThemeToggle() {
     const { theme, setTheme } = useTheme();
+    const { t } = useLanguage();
     const [isOpen, setIsOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -131,7 +138,7 @@ export default function ThemeToggle() {
     }, [isOpen]);
 
     const ActiveIcon = mounted ? THEME_ICON_REGISTRY[theme] : SunIcon;
-    const activeLabel = mounted ? (theme === ThemeMode.Dark ? "Escuro" : "Claro") : "Tema";
+    const activeLabel = mounted ? t.theme[THEME_LABEL_KEY_REGISTRY[theme]] : t.theme.label;
 
     return (
         <div className="relative inline-block text-left" ref={dropdownRef}>
@@ -140,7 +147,7 @@ export default function ThemeToggle() {
                 onClick={() => setIsOpen((prev) => !prev)}
                 aria-haspopup="menu"
                 aria-expanded={isOpen}
-                aria-label="Alternar tema visual"
+                aria-label={t.theme.ariaLabel}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border border-gray-300 dark:border-gh-border bg-gray-50 dark:bg-gh-subtle text-gray-700 dark:text-gh-text hover:bg-gray-100 dark:hover:bg-[#30363d] transition shadow-xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
                 <ActiveIcon className="w-4 h-4 text-gray-600 dark:text-gh-muted" />
@@ -177,7 +184,7 @@ export default function ThemeToggle() {
                             >
                                 <span className="flex items-center gap-2">
                                     <IconComponent className={`w-4 h-4 ${isSelected ? "text-blue-600 dark:text-gh-blue" : "text-gray-500 dark:text-gh-muted"}`} />
-                                    {option.label}
+                                    {t.theme[option.labelKey]}
                                 </span>
                                 {isSelected && <CheckIcon className="w-3.5 h-3.5 text-blue-600 dark:text-gh-blue" />}
                             </button>

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { listAvailableAssetsAction } from "@/app/_lib/actions";
+import { useLanguage } from "./LanguageProvider";
 
 type AssetItem = {
     url: string;
@@ -22,6 +23,7 @@ export default function ReuseImageModal({
     onImport,
     currentAssets,
 }: ReuseImageModalProps) {
+    const { t } = useLanguage();
     const [images, setImages] = useState<AssetItem[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [search, setSearch] = useState("");
@@ -44,12 +46,12 @@ export default function ReuseImageModal({
                 }
             })
             .catch(() => {
-                toast.error("Erro ao carregar imagens");
+                toast.error(t.reuseImageModal.loadError);
             })
             .finally(() => {
                 setIsLoading(false);
             });
-    }, [isOpen]);
+    }, [isOpen, t.reuseImageModal.loadError]);
 
     const filteredImages = useMemo(() => {
         if (!search.trim()) return images;
@@ -67,21 +69,21 @@ export default function ReuseImageModal({
         if (selectedUrls.length === 0) return;
         const toAdd = selectedUrls.filter((url) => !currentAssets.includes(url));
         if (toAdd.length === 0) {
-            toast("As imagens selecionadas já estão na gaveta de assets.");
+            toast(t.reuseImageModal.alreadyInAssetsBatch);
         } else {
             onImport(toAdd);
-            toast.success(`${toAdd.length} imagem(ns) importada(s)!`);
+            toast.success(`${toAdd.length} ${t.reuseImageModal.importedSuccessSuffix}`);
         }
         onClose();
     };
 
     const handleQuickAdd = (url: string) => {
         if (currentAssets.includes(url)) {
-            toast("Esta imagem já está nos assets.");
+            toast(t.reuseImageModal.alreadyInAssetsSingle);
             return;
         }
         onImport([url]);
-        toast.success("Imagem adicionada aos assets!");
+        toast.success(t.reuseImageModal.addedSuccess);
     };
 
     if (!isOpen) return null;
@@ -91,8 +93,8 @@ export default function ReuseImageModal({
             <div className="bg-white dark:bg-gh-surface rounded-xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col border border-gray-200 dark:border-gh-border">
                 <div className="p-4 border-b border-gray-200 dark:border-gh-border flex justify-between items-center bg-gray-50 dark:bg-gh-subtle rounded-t-xl">
                     <div>
-                        <h2 className="text-lg font-bold text-gray-800 dark:text-gh-text">Reutilizar Imagens</h2>
-                        <p className="text-xs text-gray-500 dark:text-gh-muted">Selecione imagens já salvas no site para adicionar a este post</p>
+                        <h2 className="text-lg font-bold text-gray-800 dark:text-gh-text">{t.reuseImageModal.title}</h2>
+                        <p className="text-xs text-gray-500 dark:text-gh-muted">{t.reuseImageModal.subtitle}</p>
                     </div>
                     <button
                         type="button"
@@ -106,7 +108,7 @@ export default function ReuseImageModal({
                 <div className="p-3 border-b border-gray-200 dark:border-gh-border bg-white dark:bg-gh-surface">
                     <input
                         type="text"
-                        placeholder="Pesquisar por nome da imagem..."
+                        placeholder={t.reuseImageModal.searchPlaceholder}
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         autoFocus
@@ -116,12 +118,12 @@ export default function ReuseImageModal({
 
                 <div className="flex-1 overflow-y-auto p-4">
                     {isLoading ? (
-                        <div className="py-12 text-center text-gray-400 dark:text-gh-muted text-sm">Carregando imagens...</div>
+                        <div className="py-12 text-center text-gray-400 dark:text-gh-muted text-sm">{t.reuseImageModal.loading}</div>
                     ) : filteredImages.length === 0 ? (
                         <div className="py-12 text-center text-gray-400 dark:text-gh-muted text-sm">
                             {images.length === 0
-                                ? "Nenhuma imagem salva no servidor ainda."
-                                : "Nenhuma imagem encontrada com esse termo de busca."}
+                                ? t.reuseImageModal.emptyServer
+                                : t.reuseImageModal.emptySearch}
                         </div>
                     ) : (
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
@@ -140,7 +142,7 @@ export default function ReuseImageModal({
                                                 ? "border-emerald-500 opacity-80"
                                                 : "border-gray-200 dark:border-gh-border hover:border-blue-400 dark:hover:border-gh-blue"
                                         }`}
-                                        title={isAlreadyInAssets ? "Já adicionada aos assets" : "Clique na imagem para adicionar aos assets"}
+                                        title={isAlreadyInAssets ? t.reuseImageModal.alreadyAddedTitle : t.reuseImageModal.clickToAddTitle}
                                     >
                                         <img
                                             src={img.url}
@@ -151,7 +153,7 @@ export default function ReuseImageModal({
                                         <div className="absolute top-1.5 left-1.5 flex gap-1 z-10 pointer-events-none">
                                             {isAlreadyInAssets && (
                                                 <span className="bg-emerald-600 text-white text-[10px] px-1.5 py-0.5 rounded font-medium shadow">
-                                                    Já no post
+                                                    {t.reuseImageModal.alreadyInPost}
                                                 </span>
                                             )}
                                         </div>
@@ -162,7 +164,7 @@ export default function ReuseImageModal({
                                                 e.stopPropagation();
                                                 toggleSelect(img.url);
                                             }}
-                                            title="Selecionar para importar em lote"
+                                            title={t.reuseImageModal.batchSelectTitle}
                                         >
                                             <input
                                                 type="checkbox"
@@ -186,7 +188,7 @@ export default function ReuseImageModal({
 
                 <div className="p-3 border-t border-gray-200 dark:border-gh-border bg-gray-50 dark:bg-gh-subtle rounded-b-xl flex justify-between items-center">
                     <span className="text-xs text-gray-500 dark:text-gh-muted">
-                        {filteredImages.length} imagem(ns) | {selectedUrls.length} selecionada(s)
+                        {filteredImages.length} {t.reuseImageModal.imagesLabel} | {selectedUrls.length} {t.reuseImageModal.selectedLabel}
                     </span>
                     <div className="flex gap-2">
                         <button
@@ -194,7 +196,7 @@ export default function ReuseImageModal({
                             onClick={onClose}
                             className="px-3 py-1.5 text-sm text-gray-600 dark:text-gh-muted hover:bg-gray-200 dark:hover:bg-[#30363d] rounded-lg transition cursor-pointer"
                         >
-                            Cancelar
+                            {t.reuseImageModal.cancel}
                         </button>
                         <button
                             type="button"
@@ -202,7 +204,7 @@ export default function ReuseImageModal({
                             disabled={selectedUrls.length === 0}
                             className="px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                         >
-                            Importar ({selectedUrls.length})
+                            {t.reuseImageModal.importLabel} ({selectedUrls.length})
                         </button>
                     </div>
                 </div>
@@ -210,4 +212,3 @@ export default function ReuseImageModal({
         </div>
     );
 }
-

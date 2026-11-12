@@ -1,8 +1,12 @@
 import { getPosts } from './_lib/posts'
+import { getServerDictionary } from './_lib/i18n-server'
 import PostCard from '@/components/PostCard';
 
 export default async function Home() {
-  const posts = await getPosts();
+  const [posts, { t }] = await Promise.all([
+    getPosts(),
+    getServerDictionary(),
+  ]);
 
   return (
     <div className="max-w-4xl
@@ -23,7 +27,7 @@ export default async function Home() {
                     before:border-gray-300
                     dark:before:border-gh-border">
       {posts.map(post => (
-        <PostCard post={post} key={post.slug} />
+        <PostCard post={post} untitledLabel={t.postCard.untitled} key={post.slug} />
       ))}
     </div>
   );

@@ -4,13 +4,15 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { deletePostAction } from "@/app/_lib/actions";
+import { useLanguage } from "./LanguageProvider";
 
 export default function DeletePostButton({ postId }: { postId: number }) {
     const [isPending, startTransition] = useTransition();
     const router = useRouter();
+    const { t } = useLanguage();
 
     const handleDelete = () => {
-        if (!confirm("Tem certeza que deseja excluir este post?")) return;
+        if (!confirm(t.post.deleteConfirm)) return;
 
         startTransition(async () => {
             const result = await deletePostAction(null, postId);
@@ -19,7 +21,7 @@ export default function DeletePostButton({ postId }: { postId: number }) {
                 router.push("/");
                 router.refresh();
             } else {
-                toast.error(result.error || "Erro ao excluir post");
+                toast.error(result.error || t.post.deleteError);
             }
         });
     };
@@ -31,8 +33,7 @@ export default function DeletePostButton({ postId }: { postId: number }) {
             disabled={isPending}
             className="text-xs text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 hover:font-bold cursor-pointer transition-all disabled:opacity-50"
         >
-            {isPending ? "Excluindo..." : "Excluir Post"}
+            {isPending ? t.post.deleting : t.post.deletePost}
         </button>
     );
 }
-
