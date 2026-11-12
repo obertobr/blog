@@ -10,6 +10,7 @@ import {
     saveAssetAction,
     saveDraftAction,
     saveTagAction,
+    unpublishPostAction,
 } from "../app/_lib/actions";
 import * as postsModule from "../app/_lib/posts";
 import * as authModule from "../app/_lib/auth";
@@ -282,6 +283,36 @@ describe("saveDraftAction", () => {
         });
     });
 
+    it("keeps post published when keepPublished is true in saveDraftAction", async () => {
+        vi.mocked(postsModule.updatePost).mockResolvedValue({
+            id: 88,
+            title: "Post Publicado Editado",
+            slug: "post-publicado",
+            content: "Edição rápida",
+            published: true,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            tags: [],
+        });
+
+        const result = await saveDraftAction({
+            id: 88,
+            title: "Post Publicado Editado",
+            content: "Edição rápida",
+            tags: [],
+            keepPublished: true,
+        });
+
+        expect(result.success).toBe(true);
+        expect(result.message).toBe("Post atualizado");
+        expect(postsModule.updatePost).toHaveBeenCalledWith(88, {
+            title: "Post Publicado Editado",
+            content: "Edição rápida",
+            tags: [],
+            published: true,
+        });
+    });
+
     it("allows saving draft with null/empty title and generates provisional slug from content", async () => {
         vi.mocked(postsModule.createPost).mockResolvedValue({
             id: 100,
@@ -364,13 +395,13 @@ describe("listDraftsAction and getPostForEditAction", () => {
         expect(result.drafts[0].tags).toEqual(["tech"]);
     });
 
-    it("getPostForEditAction returns post data for editing", async () => {
+    it("getPostForEditAction returns post data with extracted assets", async () => {
         vi.mocked(postsModule.getPostById).mockResolvedValue({
             id: 10,
-            title: "Rascunho",
-            slug: "rascunho",
-            content: "Conteudo",
-            published: false,
+            title: "Post com Imagem",
+            slug: "post-imagem",
+            content: "Veja a foto: ![alt](/assets/foto-legal.png)",
+            published: true,
             createdAt: new Date(),
             updatedAt: new Date(),
             tags: [{ id: 1, name: "tag1", color: null }],
@@ -379,8 +410,45 @@ describe("listDraftsAction and getPostForEditAction", () => {
         const result = await getPostForEditAction(10);
 
         expect(result.post).not.toBeNull();
-        expect(result.post?.title).toBe("Rascunho");
-        expect(result.post?.tags).toEqual(["tag1"]);
+        expect(result.post?.title).toBe("Post com Imagem");
+        expect(result.post?.published).toBe(true);
+        expect(result.post?.assets).toEqual(["/assets/foto-legal.png"]);
+    });
+});
+
+describe("unpublishPostAction", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        vi.mocked(authModule.isAuthenticated).mockResolvedValue(true);
+    });
+
+    it("blocks unpublishing if not authenticated", async () => {
+        vi.mocked(authModule.isAuthenticated).mockResolvedValue(false);
+
+        const result = await unpublishPostAction(10);
+
+        expect(result.success).toBe(false);
+        expect(result.error).toBe("Não autorizado");
+        expect(postsModule.updatePost).not.toHaveBeenCalled();
+    });
+
+    it("unpublishes post and sets published=false", async () => {
+        vi.mocked(postsModule.updatePost).mockResolvedValue({
+            id: 10,
+            title: "Post Despublicado",
+            slug: "post-despublicado",
+            content: "Texto",
+            published: false,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            tags: [],
+        });
+
+        const result = await unpublishPostAction(10);
+
+        expect(result.success).toBe(true);
+        expect(result.message).toContain("despublicado");
+        expect(postsModule.updatePost).toHaveBeenCalledWith(10, { published: false });
     });
 });
 

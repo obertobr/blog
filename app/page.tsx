@@ -22,7 +22,7 @@ export default async function Home() {
                     before:border-dotted
                     before:border-gray-300">
       {posts.map(post => (
-        <PostCard post={post} key={post.slug}/>
+        <PostCard post={post} key={post.slug} />
       ))}
     </div>
   );

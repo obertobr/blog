@@ -1,13 +1,13 @@
 import { Prisma } from "@prisma/client";
-import Link from "next/link"
+import Link from "next/link";
 
 export type PostWithTags = Prisma.PostGetPayload<{
   include: { tags: true }
 }>;
 
 type PostCardProps = {
-    post: PostWithTags
-}
+    post: PostWithTags;
+};
 
 export default function PostCard({ post }: PostCardProps) {
     return (
@@ -32,7 +32,7 @@ export default function PostCard({ post }: PostCardProps) {
                                                      before:outline-2
                                                      before:outline-gray-50">
             <div className='p-3 rounded-md bg-white hover:bg-gray-50 border border-gray-300 shadow-sm hover:shadow-md transition-shadow duration-200'>
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center mb-1">
                     <span className='text-sm text-gray-500'>{post.createdAt.toDateString()}</span>
                     <div className="flex gap-2">
                         {post.tags?.map(tag => (
@@ -47,8 +47,8 @@ export default function PostCard({ post }: PostCardProps) {
                     </div>
                 </div>
                 <h2 className='text-2xl font-bold'>{post.title || "Sem título"}</h2>
-                <p className="line-clamp-2">{post.content}</p>
+                <p className="line-clamp-2 text-gray-600 mt-1">{post.content}</p>
             </div>
         </Link>
-    )
+    );
 }

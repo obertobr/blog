@@ -4,7 +4,7 @@ import { redirect } from "next/navigation"
 import toast from "react-hot-toast"
 import { ChangeEvent, startTransition, useActionState, useCallback, useEffect, useRef, useState } from "react"
 import { markdown } from "@/app/_lib/markdown"
-import { createPostAction, deleteAssetAction, FormPostState, getPostForEditAction, saveAssetAction, saveDraftAction } from "../_lib/actions"
+import { createPostAction, deleteAssetAction, FormPostState, getPostForEditAction, saveAssetAction, saveDraftAction, unpublishPostAction } from "../_lib/actions"
 import Editor from "@monaco-editor/react";
 import { markdownToHtml } from "../_lib/util"
 import { editor } from "monaco-editor"
@@ -79,8 +79,10 @@ export default function CreatePost() {
     const [stateAsset, saveAsset] = useActionState(saveAssetAction, null);
     const [stateDelete, deleteAsset] = useActionState(deleteAssetAction, null);
 
-    const [draftId, setDraftId] = useState<number | null>(null);
-    const draftIdRef = useRef<number | null>(null);
+    const [postId, setPostId] = useState<number | null>(null);
+    const postIdRef = useRef<number | null>(null);
+    const [isPublishedPost, setIsPublishedPost] = useState<boolean>(false);
+    const isPublishedRef = useRef<boolean>(false);
 
     const [title, setTitle] = useState(state.formPost?.title || "");
     const [content, setContent] = useState(state.formPost?.content || "");
@@ -108,6 +110,7 @@ export default function CreatePost() {
     const maxWaitTimerRef = useRef<NodeJS.Timeout | null>(null);
     const isSavingRef = useRef<boolean>(false);
     const isMountedRef = useRef<boolean>(false);
+    const loadedUrlIdRef = useRef<number | null>(null);
 
     const handleImportAssets = (importedUrls: string[]) => {
         setAssets(prev => {
@@ -161,15 +164,16 @@ export default function CreatePost() {
 
         try {
             const result = await saveDraftAction({
-                id: draftIdRef.current ?? undefined,
+                id: postIdRef.current ?? undefined,
                 title: currentTitle,
                 content: currentContent,
                 tags: currentTags,
+                keepPublished: isPublishedRef.current,
             });
 
             if (result.success && result.id) {
-                draftIdRef.current = result.id;
-                setDraftId(result.id);
+                postIdRef.current = result.id;
+                setPostId(result.id);
                 lastSavedRef.current = {
                     title: currentTitle,
                     content: currentContent,
@@ -179,7 +183,7 @@ export default function CreatePost() {
                 const timeString = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
                 setLastSavedTime(timeString);
                 if (isManual) {
-                    toast.success("Rascunho salvo com sucesso!");
+                    toast.success(result.message || "Rascunho salvo com sucesso!");
                 }
             } else {
                 setSaveStatus(AutoSaveStatus.Error);
@@ -197,32 +201,86 @@ export default function CreatePost() {
         }
     }, [title, content, tags]);
 
-    const handleSelectDraft = useCallback(async (selectedId: number) => {
+    const loadPost = useCallback(async (selectedId: number) => {
         const res = await getPostForEditAction(selectedId);
         if (res.error || !res.post) {
-            toast.error(res.error || "Erro ao carregar rascunho");
+            toast.error(res.error || "Erro ao carregar post");
             return;
         }
 
         const post = res.post;
-        draftIdRef.current = post.id;
-        setDraftId(post.id);
+        postIdRef.current = post.id;
+        setPostId(post.id);
+        setIsPublishedPost(Boolean(post.published));
+        isPublishedRef.current = Boolean(post.published);
+
         setTitle(post.title || "");
-        setContent(post.content);
-        setTags(post.tags);
+        setContent(post.content || "");
+        setTags(post.tags || []);
+        if (post.assets && post.assets.length > 0) {
+            setAssets(prev => {
+                const existing = new Set(prev);
+                const toAdd = post.assets.filter(a => !existing.has(a));
+                return prev.concat(toAdd);
+            });
+        }
+
         lastSavedRef.current = {
             title: post.title || "",
-            content: post.content,
+            content: post.content || "",
             tags: [...post.tags],
         };
 
         if (editorRef.current) {
-            editorRef.current.setValue(post.content);
+            editorRef.current.setValue(post.content || "");
         }
-        await convert(post.content);
+        await convert(post.content || "");
         setSaveStatus(AutoSaveStatus.Saved);
-        toast.success("Rascunho carregado");
     }, [convert]);
+
+    const handleNewPost = () => {
+        if (title.trim() || content.trim()) {
+            if (!confirm("Deseja iniciar um novo post em branco?")) return;
+        }
+
+        postIdRef.current = null;
+        setPostId(null);
+        setIsPublishedPost(false);
+        isPublishedRef.current = false;
+        loadedUrlIdRef.current = null;
+
+        setTitle("");
+        setContent("");
+        setTags([]);
+        setAssets([]);
+
+        lastSavedRef.current = {
+            title: "",
+            content: "",
+            tags: [],
+        };
+
+        if (editorRef.current) {
+            editorRef.current.setValue("");
+        }
+        setPreviewHtml("");
+        setSaveStatus(AutoSaveStatus.Idle);
+        toast.success("Novo post iniciado");
+    };
+
+    const handleUnpublish = async () => {
+        if (!postIdRef.current) return;
+        if (!confirm("Deseja mover este post de volta para rascunhos? Ele deixará de aparecer na página inicial.")) return;
+
+        const res = await unpublishPostAction(postIdRef.current);
+        if (res.success) {
+            setIsPublishedPost(false);
+            isPublishedRef.current = false;
+            toast.success("Post despublicado e movido para rascunhos!");
+        } else {
+            toast.error(res.error || "Erro ao despublicar post");
+        }
+    };
 
     const uploadAndInsertImages = useCallback(async (files: File[]) => {
         const imageFiles = files.filter(f => f.type.startsWith("image/"));
@@ -304,7 +362,7 @@ export default function CreatePost() {
 
         startTransition(() => {
             formAction({
-                id: draftIdRef.current ?? undefined,
+                id: postIdRef.current ?? undefined,
                 title,
                 content,
                 tags,
@@ -372,11 +430,12 @@ export default function CreatePost() {
 
         if (typeof window !== "undefined") {
             const params = new URLSearchParams(window.location.search);
-            const urlDraftId = params.get("draftId");
-            if (urlDraftId) {
-                const num = parseInt(urlDraftId, 10);
-                if (!isNaN(num)) {
-                    handleSelectDraft(num);
+            const urlId = params.get("id") || params.get("draftId");
+            if (urlId) {
+                const num = parseInt(urlId, 10);
+                if (!isNaN(num) && loadedUrlIdRef.current !== num) {
+                    loadedUrlIdRef.current = num;
+                    loadPost(num);
                 }
             }
         }
@@ -385,7 +444,7 @@ export default function CreatePost() {
         if (edit) {
             return markdown()
         }
-    }, [handleSelectDraft])
+    }, [loadPost])
 
     useEffect(() => {
         if (!isMountedRef.current) {
@@ -515,15 +574,34 @@ export default function CreatePost() {
                         className="bg-sky-600 text-white font-medium p-1.5 px-3 rounded-lg hover:bg-sky-700 transition cursor-pointer shadow-sm text-sm"
                         onClick={handleSendForm}
                     >
-                        Publicar
+                        {isPublishedPost ? "Salvar Alterações" : "Publicar"}
                     </button>
-                    <button
-                        type="button"
-                        className="bg-white border border-gray-300 p-1.5 px-3 rounded-lg font-medium text-gray-700 hover:text-gray-900 transition hover:border-gray-500 cursor-pointer text-sm"
-                        onClick={() => saveDraft(true)}
-                    >
-                        Salvar Rascunho
-                    </button>
+                    {!isPublishedPost ? (
+                        <button
+                            type="button"
+                            className="bg-white border border-gray-300 p-1.5 px-3 rounded-lg font-medium text-gray-700 hover:text-gray-900 transition hover:border-gray-500 cursor-pointer text-sm"
+                            onClick={() => saveDraft(true)}
+                        >
+                            Salvar Rascunho
+                        </button>
+                    ) : (
+                        <button
+                            type="button"
+                            className="bg-white border border-amber-300 p-1.5 px-3 rounded-lg font-medium text-amber-700 hover:text-amber-900 hover:bg-amber-50 transition cursor-pointer text-sm"
+                            onClick={handleUnpublish}
+                        >
+                            Despublicar
+                        </button>
+                    )}
+                    {postId !== null && (
+                        <button
+                            type="button"
+                            className="bg-white border border-gray-300 p-1.5 px-3 rounded-lg font-medium text-gray-600 hover:text-gray-900 transition hover:border-gray-500 cursor-pointer text-sm"
+                            onClick={handleNewPost}
+                        >
+                            Novo Post
+                        </button>
+                    )}
                     <div className="ml-2 flex items-center min-h-[20px]">
                         {saveStatus === AutoSaveStatus.Saving && (
                             <span className="text-xs text-sky-600 flex items-center gap-1.5 font-medium animate-pulse">
@@ -684,8 +762,8 @@ export default function CreatePost() {
             <DraftsModal
                 isOpen={draftsModalOpen}
                 onClose={() => setDraftsModalOpen(false)}
-                onSelectDraft={handleSelectDraft}
-                currentDraftId={draftId}
+                onSelectDraft={loadPost}
+                currentDraftId={postId}
             />
         </div>
     )

@@ -117,6 +117,7 @@ export type SaveDraftInput = {
     title?: string | null;
     content: string;
     tags: string[];
+    keepPublished?: boolean;
 };
 
 export type SaveDraftResult = {
@@ -150,13 +151,13 @@ export async function saveDraftAction(
                 title,
                 content,
                 tags,
-                published: false,
+                published: input.keepPublished ? true : false,
             });
             return {
                 success: true,
                 id: updated.id,
                 slug: updated.slug,
-                message: "Rascunho atualizado",
+                message: input.keepPublished ? "Post atualizado" : "Rascunho atualizado",
             };
         }
 
@@ -222,6 +223,9 @@ export async function getPostForEditAction(id: number) {
         return { post: null, error: "Post não encontrado" };
     }
 
+    const assetFileNames = extractAssetUrls(post.content || "");
+    const assets = assetFileNames.map(name => `/assets/${encodeURI(name)}`);
+
     return {
         post: {
             id: post.id,
@@ -230,8 +234,22 @@ export async function getPostForEditAction(id: number) {
             content: post.content,
             published: post.published,
             tags: post.tags.map(t => t.name),
+            assets,
         },
     };
+}
+
+export async function unpublishPostAction(id: number) {
+    if (!await isAuthenticated()) {
+        return { success: false, error: "Não autorizado" };
+    }
+
+    try {
+        const post = await updatePost(id, { published: false });
+        return { success: true, message: "Post despublicado e movido para rascunhos", slug: post.slug };
+    } catch {
+        return { success: false, error: "Erro ao despublicar post" };
+    }
 }
 
 

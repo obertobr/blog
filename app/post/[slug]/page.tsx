@@ -38,15 +38,18 @@ export default async function Post({
                                     Rascunho
                                 </span>
                             )}
-                            {isAuth && !post.published && (
-                                <Link
-                                    href={`/createPost?draftId=${post.id}`}
-                                    className="text-xs font-medium text-sky-600 hover:text-sky-800 underline"
-                                >
-                                    Editar rascunho
-                                </Link>
+                            {isAuth && (
+                                <div className="flex items-center gap-2">
+                                    <Link
+                                        href={`/createPost?id=${post.id}`}
+                                        className="text-xs text-sky-600 hover:text-sky-800 hover:font-bold cursor-pointer transition-all"
+                                    >
+                                        Editar {post.published ? "Post" : "Rascunho"}
+                                    </Link>
+                                    <span className="text-gray-300">•</span>
+                                    <DeletePostButton postId={post.id} />
+                                </div>
                             )}
-                            {isAuth && <DeletePostButton postId={post.id} />}
                         </div>
                         <div className="flex gap-2">
                             {post.tags?.map(tag => (
