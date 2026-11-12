@@ -3,7 +3,7 @@ import path from "path";
 import crypto from "crypto";
 import { createPost, createTag, deletePost, deleteTag, getPostById, isAssetUsedInOtherPosts, updateTag } from "./posts"
 import { extractAssetUrls, slugify } from "./util"
-import { mkdir, unlink, writeFile } from "fs/promises"
+import { mkdir, readdir, stat, unlink, writeFile } from "fs/promises"
 import { clearAdminSession, isAuthenticated, isValidPassword, setAdminSession } from "./auth"
 
 export type formPost = {
@@ -151,7 +151,12 @@ export async function deleteAssetAction(_: unknown, filePath: string) {
 
         const isUsed = (await isAssetUsedInOtherPosts(fileName)) || (await isAssetUsedInOtherPosts(decoded))
         if (isUsed) {
-            return { error: "Esta imagem está sendo usada em um post e não pode ser excluída." }
+            return {
+                success: true,
+                deletedFromDisk: false,
+                message: `Imagem ${fileName} removida dos assets do post`,
+                filePath: filePath
+            }
         }
 
         const fullPath = path.join(process.cwd(), "public", "assets", fileName)
@@ -159,11 +164,51 @@ export async function deleteAssetAction(_: unknown, filePath: string) {
 
         return {
             success: true,
+            deletedFromDisk: true,
             message: `Imagem ${fileName} excluída com sucesso`,
             filePath: filePath
         }
     } catch {
         return { error: "Erro ao excluir imagem" }
+    }
+}
+
+export async function listAvailableAssetsAction(): Promise<{ assets: { url: string; name: string }[]; error?: string }> {
+    if (!await isAuthenticated()) {
+        return { assets: [], error: "Não autorizado" };
+    }
+
+    try {
+        const uploadDir = path.join(process.cwd(), "public", "assets");
+        await mkdir(uploadDir, { recursive: true });
+
+        const entries = await readdir(uploadDir, { withFileTypes: true });
+        const allowedExtensions = [".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".avif"];
+
+        const assets: { url: string; name: string; mtime: number }[] = [];
+
+        for (const entry of entries) {
+            if (entry.isFile()) {
+                const ext = path.extname(entry.name).toLowerCase();
+                if (allowedExtensions.includes(ext)) {
+                    const filePath = path.join(uploadDir, entry.name);
+                    const fileStat = await stat(filePath).catch(() => null);
+                    assets.push({
+                        url: `/assets/${entry.name}`,
+                        name: entry.name,
+                        mtime: fileStat ? fileStat.mtimeMs : 0,
+                    });
+                }
+            }
+        }
+
+        assets.sort((a, b) => b.mtime - a.mtime);
+
+        return {
+            assets: assets.map(({ url, name }) => ({ url, name })),
+        };
+    } catch {
+        return { assets: [], error: "Erro ao listar imagens" };
     }
 }
 

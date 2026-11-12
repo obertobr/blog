@@ -4,7 +4,7 @@
 | :---: | :--- | :--- | :---: |
 | **01** | **Correção do sistema de imagens** | Corrigir upload e carregamento/renderização das imagens (resolver falha onde a imagem não é carregada/exibida) | ✅ Concluído |
 | **02** | **Colar (`Ctrl+V`) e arrastar imagens no editor** | Suporte a clipboard e drag-and-drop para upload automático e inserção imediata no Markdown | ✅ Concluído |
-| **03** | **Botão "Reutilizar imagem"** | Modal/seletor na gaveta de assets para listar e reinserir imagens já existentes no servidor | ⏳ Pendente |
+| **03** | **Botão "Reutilizar imagem"** | Modal/seletor na gaveta de assets para listar e reinserir imagens já existentes no servidor | ✅ Concluído |
 | **04** | **Botão "Salvar Rascunho"** | Adicionar status de rascunho no schema, salvar sem publicar e listar rascunhos do admin | ⏳ Pendente |
 | **05** | **Edição e exclusão de posts** | Permitir que o administrador edite título/conteúdo/tags e remova posts existentes | ⏳ Pendente |
 | **06** | **Sistema de datas relativas** | Exibir datas no formato "há 1 hora", "há 1 semana", "há 1 mês" usando API nativa de internacionalização | ⏳ Pendente |

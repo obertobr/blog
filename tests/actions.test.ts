@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createPostAction, deleteAssetAction, deletePostAction, loginAction, saveAssetAction, saveTagAction } from "../app/_lib/actions";
+import { createPostAction, deleteAssetAction, deletePostAction, listAvailableAssetsAction, loginAction, saveAssetAction, saveTagAction } from "../app/_lib/actions";
 import * as postsModule from "../app/_lib/posts";
 import * as authModule from "../app/_lib/auth";
-import { unlink } from "fs/promises";
+import { readdir, stat, unlink } from "fs/promises";
 
 vi.mock("../app/_lib/posts", () => ({
     createPost: vi.fn(),
@@ -25,6 +25,8 @@ vi.mock("fs/promises", () => ({
     unlink: vi.fn(),
     writeFile: vi.fn(),
     mkdir: vi.fn(),
+    readdir: vi.fn(),
+    stat: vi.fn(),
 }));
 
 describe("loginAction", () => {
@@ -217,12 +219,14 @@ describe("deleteAssetAction", () => {
         expect(unlink).toHaveBeenCalledWith(expect.stringMatching(/[\\/]public[\\/]assets[\\/]malicious\.png$/));
     });
 
-    it("blocks asset deletion if it is used in a post", async () => {
+    it("does not unlink file from disk if used in another post, but returns success to allow removing from current assets", async () => {
         vi.mocked(postsModule.isAssetUsedInOtherPosts).mockResolvedValue(true);
 
         const result = await deleteAssetAction(null, "/assets/foto.png");
 
-        expect(result.error).toBe("Esta imagem está sendo usada em um post e não pode ser excluída.");
+        expect(result.success).toBe(true);
+        expect(result.deletedFromDisk).toBe(false);
+        expect(result.message).toContain("removida dos assets do post");
         expect(unlink).not.toHaveBeenCalled();
     });
 });
@@ -341,5 +345,43 @@ describe("deletePostAction", () => {
         expect(postsModule.deletePost).toHaveBeenCalledWith(1);
         expect(postsModule.isAssetUsedInOtherPosts).toHaveBeenCalledWith("compartilhada.png", 1);
         expect(unlink).not.toHaveBeenCalled();
+    });
+});
+
+describe("listAvailableAssetsAction", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        vi.mocked(authModule.isAuthenticated).mockResolvedValue(true);
+    });
+
+    it("blocks listing assets if user is not authenticated", async () => {
+        vi.mocked(authModule.isAuthenticated).mockResolvedValue(false);
+
+        const result = await listAvailableAssetsAction();
+
+        expect(result.error).toBe("Não autorizado");
+        expect(result.assets).toEqual([]);
+    });
+
+    it("lists only valid image files and ignores non-images and .gitkeep", async () => {
+        const mockEntries = [
+            { isFile: () => true, name: "foto1.png" },
+            { isFile: () => true, name: ".gitkeep" },
+            { isFile: () => false, name: "subpasta" },
+            { isFile: () => true, name: "foto2.webp" },
+            { isFile: () => true, name: "documento.pdf" },
+        ];
+
+        vi.mocked(readdir).mockResolvedValue(mockEntries as never);
+        vi.mocked(stat).mockImplementation((filePath) => {
+            const mtime = String(filePath).includes("foto2") ? 2000 : 1000;
+            return Promise.resolve({ mtimeMs: mtime } as never);
+        });
+
+        const result = await listAvailableAssetsAction();
+
+        expect(result.assets).toHaveLength(2);
+        expect(result.assets[0]).toEqual({ url: "/assets/foto2.webp", name: "foto2.webp" });
+        expect(result.assets[1]).toEqual({ url: "/assets/foto1.png", name: "foto1.png" });
     });
 });

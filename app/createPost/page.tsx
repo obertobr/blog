@@ -11,6 +11,7 @@ import { editor } from "monaco-editor"
 import CreatableSelect from 'react-select/creatable';
 import { getTags } from "../_lib/posts"
 import Asset from "@/components/Asset"
+import ReuseImageModal from "@/components/ReuseImageModal"
 
 const optionsEditor: editor.IStandaloneEditorConstructionOptions = {
     fontSize: 14,
@@ -79,6 +80,15 @@ export default function CreatePost() {
     const [allTags, setAllTags] = useState<{ value: string; label: string }[]>([]);
     const [assets, setAssets] = useState<string[]>([]);
     const [isDragging, setIsDragging] = useState(false);
+    const [reuseModalOpen, setReuseModalOpen] = useState(false);
+
+    const handleImportAssets = (importedUrls: string[]) => {
+        setAssets(prev => {
+            const existing = new Set(prev);
+            const toAdd = importedUrls.filter(u => !existing.has(u));
+            return prev.concat(toAdd);
+        });
+    };
 
     const convert = useCallback(async (markdown: string) => {
         const html = await markdownToHtml(markdown)
@@ -409,13 +419,26 @@ export default function CreatePost() {
                         </label>
                         <input type="file" id="image-upload" className="hidden" multiple accept="image/*" onChange={handleImageInput}></input>
                         <hr className="border-dashed border-sky-200 border-t-2" />
-                        <button className="w-full cursor-pointer flex items-center justify-center h-full p-2 hover:bg-sky-100 transition">Reutilizar imagem</button>
+                        <button
+                            type="button"
+                            onClick={() => setReuseModalOpen(true)}
+                            className="w-full cursor-pointer flex items-center justify-center h-full p-2 hover:bg-sky-100 transition"
+                        >
+                            Reutilizar imagem
+                        </button>
                     </div>
                     {assets.map((asset, index) => (
                         <Asset key={index} url={asset} onDelete={handleDeleteAsset} />
                     ))}
                 </div>
             </div>
+
+            <ReuseImageModal
+                isOpen={reuseModalOpen}
+                onClose={() => setReuseModalOpen(false)}
+                onImport={handleImportAssets}
+                currentAssets={assets}
+            />
         </div>
     )
 }
