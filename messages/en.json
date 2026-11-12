@@ -120,6 +120,13 @@
     "copy": "Copy",
     "copiedMarkdown": "Markdown copied!"
   },
+  "likes": {
+    "like": "Like",
+    "liked": "Liked",
+    "error": "Error updating like",
+    "ariaLike": "Like this post",
+    "ariaUnlike": "Unlike this post"
+  },
   "relativeDate": {
     "justNow": "just now",
     "yearSingular": "year",

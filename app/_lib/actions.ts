@@ -1,10 +1,16 @@
 'use server'
 import path from "path";
 import crypto from "crypto";
-import { createPost, createTag, deletePost, deleteTag, getDrafts, getPostById, getPostBySlug, isAssetUsedInOtherPosts, updatePost, updateTag } from "./posts"
+import { z } from "zod";
+import { revalidatePath } from "next/cache";
+import { createPost, createTag, deletePost, deleteTag, getDrafts, getPostById, getPostBySlug, isAssetUsedInOtherPosts, recordPostRead, togglePostLike, updatePost, updateTag } from "./posts"
 import { extractAssetUrls, slugify } from "./util"
 import { mkdir, readdir, stat, unlink, writeFile } from "fs/promises"
 import { clearAdminSession, isAuthenticated, isValidPassword, setAdminSession } from "./auth"
+import { visitorHashSchema } from "./visitor"
+import { getOrCreateVisitorHashForAction, restoreVisitorHashCookie } from "./visitor-server"
+
+const postIdSchema = z.number().int().positive();
 
 export type formPost = {
     id?: number;
@@ -463,5 +469,57 @@ export async function deletePostAction(_: unknown, id: number) {
         }
     } catch {
         return { error: "Erro ao excluir post" }
+    }
+}
+
+export async function toggleLikeAction(postId: number): Promise<
+    { success: true; liked: boolean; likesCount: number } | { error: string }
+> {
+    const parsedId = postIdSchema.safeParse(postId);
+    if (!parsedId.success) {
+        return { error: "Invalid post id" };
+    }
+
+    try {
+        const visitorHash = await getOrCreateVisitorHashForAction();
+        const result = await togglePostLike(parsedId.data, visitorHash);
+        revalidatePath("/");
+        revalidatePath(`/post/${result.slug}`);
+        return {
+            success: true,
+            liked: result.liked,
+            likesCount: result.likesCount,
+        };
+    } catch {
+        return { error: "Error toggling like" };
+    }
+}
+
+export async function recordPostReadAction(postId: number): Promise<{ success: boolean }> {
+    const parsedId = postIdSchema.safeParse(postId);
+    if (!parsedId.success) {
+        return { success: false };
+    }
+
+    try {
+        const visitorHash = await getOrCreateVisitorHashForAction();
+        await recordPostRead(parsedId.data, visitorHash);
+        return { success: true };
+    } catch {
+        return { success: false };
+    }
+}
+
+export async function restoreVisitorHashAction(hash: string): Promise<{ success: boolean }> {
+    const parsed = visitorHashSchema.safeParse(hash);
+    if (!parsed.success) {
+        return { success: false };
+    }
+
+    try {
+        await restoreVisitorHashCookie(parsed.data);
+        return { success: true };
+    } catch {
+        return { success: false };
     }
 }

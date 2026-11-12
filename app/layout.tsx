@@ -5,7 +5,9 @@ import "./globals.css";
 import NavBar from "@/components/NavBar";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { LanguageProvider } from "@/components/LanguageProvider";
+import VisitorSync from "@/components/VisitorSync";
 import { getServerLocale } from "./_lib/i18n-server";
+import { getVisitorHash } from "./_lib/visitor-server";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,7 +31,10 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const locale = await getServerLocale();
+  const [locale, visitorHash] = await Promise.all([
+    getServerLocale(),
+    getVisitorHash(),
+  ]);
 
   return (
     <html lang={locale} suppressHydrationWarning>
@@ -41,6 +46,7 @@ export default async function RootLayout({
       >
         <LanguageProvider initialLocale={locale}>
           <ThemeProvider>
+            <VisitorSync initialVisitorHash={visitorHash} />
             <Toaster position="bottom-center" />
             <NavBar />
             {children}

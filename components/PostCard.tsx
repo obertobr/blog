@@ -1,10 +1,16 @@
 import { Prisma } from "@prisma/client";
 import Link from "next/link";
 import RelativeDate from "./RelativeDate";
+import ThumbsUpIcon from "./ThumbsUpIcon";
 
 export type PostWithTags = Prisma.PostGetPayload<{
-  include: { tags: true }
-}>;
+  include: {
+    tags: true;
+    _count: { select: { likes: true } };
+  };
+}> & {
+  likes?: { id: number }[];
+};
 
 type PostCardProps = {
     post: PostWithTags;
@@ -12,6 +18,8 @@ type PostCardProps = {
 };
 
 export default function PostCard({ post, untitledLabel = "Sem título" }: PostCardProps) {
+    const likesCount = post._count?.likes ?? 0;
+    const isLiked = Boolean(post.likes && post.likes.length > 0);
     return (
         <Link href={`/post/${post.slug}`} className="relative
                                                      before:content-['']
@@ -38,8 +46,20 @@ export default function PostCard({ post, untitledLabel = "Sem título" }: PostCa
                                                      before:outline-gray-50
                                                      dark:before:outline-gh-canvas">
             <div className='p-3 rounded-md bg-white dark:bg-gh-surface hover:bg-gray-50 dark:hover:bg-[#1c2128] border border-gray-300 dark:border-gh-border shadow-xs hover:shadow-md transition duration-200'>
-                <div className="flex justify-between items-center mb-1">
-                    <RelativeDate date={post.createdAt} className="text-sm text-gray-500 dark:text-gh-muted" />
+                <div className="flex justify-between items-center mb-1 gap-2 flex-wrap">
+                    <div className="flex items-center gap-3">
+                        <RelativeDate date={post.createdAt} className="text-sm text-gray-500 dark:text-gh-muted" />
+                        <span
+                            className={`inline-flex items-center gap-1 text-xs font-medium tabular-nums ${
+                                isLiked
+                                    ? "text-sky-600 dark:text-gh-blue"
+                                    : "text-gray-400 dark:text-gh-muted"
+                            }`}
+                        >
+                            <ThumbsUpIcon filled={isLiked} className="w-3.5 h-3.5" />
+                            {likesCount}
+                        </span>
+                    </div>
                     <div className="flex gap-2">
                         {post.tags?.map(tag => (
                             <span

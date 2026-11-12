@@ -2,12 +2,25 @@
 
 import prisma from "./prisma";
 
-export async function getPosts(options?: { publishedOnly?: boolean }) {
+function buildPostInclude(visitorHash?: string | null) {
+    return {
+        tags: true,
+        _count: { select: { likes: true } },
+        ...(visitorHash ? {
+            likes: {
+                where: { visitor: { hash: visitorHash } },
+                select: { id: true },
+            },
+        } : {}),
+    };
+}
+
+export async function getPosts(options?: { publishedOnly?: boolean; visitorHash?: string | null }) {
     const publishedOnly = options?.publishedOnly ?? true;
     return await prisma.post.findMany({
         where: publishedOnly ? { published: true } : undefined,
         orderBy: { createdAt: 'desc' },
-        include: { tags: true }
+        include: buildPostInclude(options?.visitorHash),
     });
 }
 
@@ -24,11 +37,11 @@ export async function getTags() {
 }
 
 
-export async function getPostBySlug(slug: string) {
+export async function getPostBySlug(slug: string, visitorHash?: string | null) {
     return await prisma.post.findUnique({
         where: { slug },
-        include: { tags: true }
-    })
+        include: buildPostInclude(visitorHash),
+    });
 }
 
 export async function getPostById(id: number) {
@@ -142,4 +155,92 @@ export async function updatePost(
         }
         throw new Error("Error updating post");
     }
+}
+
+export async function togglePostLike(
+    postId: number,
+    visitorHash: string
+): Promise<{ liked: boolean; likesCount: number; slug: string }> {
+    return await prisma.$transaction(async (tx) => {
+        const post = await tx.post.findUnique({
+            where: { id: postId },
+            select: { id: true, slug: true, published: true },
+        });
+
+        if (!post || !post.published) {
+            throw new Error("Post not found");
+        }
+
+        const visitor = await tx.visitor.upsert({
+            where: { hash: visitorHash },
+            update: { lastSeen: new Date() },
+            create: { hash: visitorHash },
+        });
+
+        const existingLike = await tx.postLike.findUnique({
+            where: {
+                postId_visitorId: {
+                    postId: post.id,
+                    visitorId: visitor.id,
+                },
+            },
+        });
+
+        let liked: boolean;
+        if (existingLike) {
+            await tx.postLike.delete({
+                where: { id: existingLike.id },
+            });
+            liked = false;
+        } else {
+            await tx.postLike.create({
+                data: {
+                    postId: post.id,
+                    visitorId: visitor.id,
+                },
+            });
+            liked = true;
+        }
+
+        const likesCount = await tx.postLike.count({
+            where: { postId: post.id },
+        });
+
+        return { liked, likesCount, slug: post.slug };
+    });
+}
+
+export async function recordPostRead(postId: number, visitorHash: string): Promise<void> {
+    const post = await prisma.post.findFirst({
+        where: { id: postId, published: true },
+        select: { id: true },
+    });
+
+    if (!post) {
+        return;
+    }
+
+    const visitor = await prisma.visitor.upsert({
+        where: { hash: visitorHash },
+        update: { lastSeen: new Date() },
+        create: { hash: visitorHash },
+    });
+
+    await prisma.postRead.upsert({
+        where: {
+            postId_visitorId: {
+                postId: post.id,
+                visitorId: visitor.id,
+            },
+        },
+        update: {
+            readCount: { increment: 1 },
+            lastRead: new Date(),
+        },
+        create: {
+            postId: post.id,
+            visitorId: visitor.id,
+            readCount: 1,
+        },
+    });
 }

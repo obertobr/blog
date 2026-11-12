@@ -1,12 +1,14 @@
 import { getPosts } from './_lib/posts'
 import { getServerDictionary } from './_lib/i18n-server'
+import { getVisitorHash } from './_lib/visitor-server'
 import PostCard from '@/components/PostCard';
 
 export default async function Home() {
-  const [posts, { t }] = await Promise.all([
-    getPosts(),
+  const [visitorHash, { t }] = await Promise.all([
+    getVisitorHash(),
     getServerDictionary(),
   ]);
+  const posts = await getPosts({ visitorHash });
 
   return (
     <div className="max-w-4xl

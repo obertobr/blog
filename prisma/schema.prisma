@@ -14,14 +14,16 @@ datasource db {
 }
 
 model Post {
-  id         Int      @id @default(autoincrement())
+  id         Int        @id @default(autoincrement())
   title      String?
-  slug       String   @unique
+  slug       String     @unique
   content    String
-  published  Boolean  @default(true)
-  tags       Tag[]    @relation("PostTags")
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  published  Boolean    @default(true)
+  tags       Tag[]      @relation("PostTags")
+  likes      PostLike[]
+  reads      PostRead[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
 }
 
 model Tag {
@@ -29,4 +31,41 @@ model Tag {
   name       String   @unique
   color      String?
   posts      Post[]   @relation("PostTags")
+}
+
+model Visitor {
+  id        Int        @id @default(autoincrement())
+  hash      String     @unique
+  likes     PostLike[]
+  reads     PostRead[]
+  createdAt DateTime   @default(now())
+  lastSeen  DateTime   @updatedAt
+}
+
+model PostLike {
+  id        Int      @id @default(autoincrement())
+  postId    Int
+  visitorId Int
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  visitor   Visitor  @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([postId, visitorId])
+  @@index([postId])
+  @@index([visitorId])
+}
+
+model PostRead {
+  id        Int      @id @default(autoincrement())
+  postId    Int
+  visitorId Int
+  readCount Int      @default(1)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  visitor   Visitor  @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  firstRead DateTime @default(now())
+  lastRead  DateTime @updatedAt
+
+  @@unique([postId, visitorId])
+  @@index([postId])
+  @@index([visitorId])
 }

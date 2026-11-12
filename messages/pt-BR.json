@@ -120,6 +120,13 @@
     "copy": "Copiar",
     "copiedMarkdown": "Markdown copiado!"
   },
+  "likes": {
+    "like": "Curtir",
+    "liked": "Curtido",
+    "error": "Erro ao registrar curtida",
+    "ariaLike": "Curtir este post",
+    "ariaUnlike": "Remover curtida deste post"
+  },
   "relativeDate": {
     "justNow": "agora mesmo",
     "yearSingular": "ano",

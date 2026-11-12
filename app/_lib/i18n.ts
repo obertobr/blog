@@ -154,6 +154,13 @@ export interface Dictionary {
         copy: string;
         copiedMarkdown: string;
     };
+    likes: {
+        like: string;
+        liked: string;
+        error: string;
+        ariaLike: string;
+        ariaUnlike: string;
+    };
     relativeDate: {
         justNow: string;
         yearSingular: string;

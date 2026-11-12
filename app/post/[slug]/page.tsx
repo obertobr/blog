@@ -3,7 +3,10 @@ import { markdownToHtml } from "@/app/_lib/util"
 import { notFound } from "next/navigation"
 import { isAuthenticated } from "@/app/_lib/auth"
 import { getServerDictionary } from "@/app/_lib/i18n-server"
+import { getVisitorHash } from "@/app/_lib/visitor-server"
 import DeletePostButton from "@/components/DeletePostButton"
+import LikeButton from "@/components/LikeButton"
+import PostReadTracker from "@/components/PostReadTracker"
 import RelativeDate from "@/components/RelativeDate"
 import Link from "next/link"
 
@@ -13,8 +16,9 @@ export default async function Post({
     params: Promise<{ slug: string }>
 }) {
     const { slug } = await params
+    const visitorHash = await getVisitorHash()
     const [post, isAuth, { locale, t }] = await Promise.all([
-        getPostBySlug(slug),
+        getPostBySlug(slug, visitorHash),
         isAuthenticated(),
         getServerDictionary(),
     ])
@@ -28,6 +32,8 @@ export default async function Post({
     }
 
     const contentRemark = await markdownToHtml(post.content || "")
+    const initialLikesCount = post._count?.likes ?? 0
+    const initialLiked = Boolean(post.likes && post.likes.length > 0)
 
     return (
         <div className="max-w-4xl mx-auto">
@@ -71,6 +77,18 @@ export default async function Post({
                 <article className="prose dark:prose-invert max-w-none p-6 pt-5 prose-hr:mt-3 prose-hr:mb-3">
                     <div dangerouslySetInnerHTML={{ __html: contentRemark }} />
                 </article>
+                {post.published && (
+                    <>
+                        <PostReadTracker postId={post.id} />
+                        <footer className="border-t border-gray-300 dark:border-gh-border px-6 py-4 bg-gray-50/50 dark:bg-gh-subtle/30 rounded-b-lg">
+                            <LikeButton
+                                postId={post.id}
+                                initialLiked={initialLiked}
+                                initialLikesCount={initialLikesCount}
+                            />
+                        </footer>
+                    </>
+                )}
             </div>
         </div>
     )

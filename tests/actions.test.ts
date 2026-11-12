@@ -7,14 +7,22 @@ import {
     listAvailableAssetsAction,
     listDraftsAction,
     loginAction,
+    recordPostReadAction,
+    restoreVisitorHashAction,
     saveAssetAction,
     saveDraftAction,
     saveTagAction,
+    toggleLikeAction,
     unpublishPostAction,
 } from "../app/_lib/actions";
 import * as postsModule from "../app/_lib/posts";
 import * as authModule from "../app/_lib/auth";
+import * as visitorServerModule from "../app/_lib/visitor-server";
 import { readdir, stat, unlink } from "fs/promises";
+
+vi.mock("next/cache", () => ({
+    revalidatePath: vi.fn(),
+}));
 
 vi.mock("../app/_lib/posts", () => ({
     createPost: vi.fn(),
@@ -27,6 +35,14 @@ vi.mock("../app/_lib/posts", () => ({
     getPostBySlug: vi.fn(),
     getDrafts: vi.fn(),
     isAssetUsedInOtherPosts: vi.fn(),
+    togglePostLike: vi.fn(),
+    recordPostRead: vi.fn(),
+}));
+
+vi.mock("../app/_lib/visitor-server", () => ({
+    getVisitorHash: vi.fn(),
+    getOrCreateVisitorHashForAction: vi.fn(),
+    restoreVisitorHashCookie: vi.fn(),
 }));
 
 vi.mock("../app/_lib/auth", () => ({
@@ -708,5 +724,94 @@ describe("listAvailableAssetsAction", () => {
         expect(result.assets).toHaveLength(2);
         expect(result.assets[0]).toEqual({ url: "/assets/foto2.webp", name: "foto2.webp" });
         expect(result.assets[1]).toEqual({ url: "/assets/foto1.png", name: "foto1.png" });
+    });
+});
+
+describe("toggleLikeAction", () => {
+    const mockHash = "a".repeat(64);
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        vi.mocked(visitorServerModule.getOrCreateVisitorHashForAction).mockResolvedValue(mockHash);
+    });
+
+    it("rejects invalid post IDs", async () => {
+        const negative = await toggleLikeAction(-1);
+        const zero = await toggleLikeAction(0);
+        const float = await toggleLikeAction(1.5);
+
+        expect("error" in negative).toBe(true);
+        expect("error" in zero).toBe(true);
+        expect("error" in float).toBe(true);
+        expect(postsModule.togglePostLike).not.toHaveBeenCalled();
+    });
+
+    it("toggles like for the visitor and returns updated count", async () => {
+        vi.mocked(postsModule.togglePostLike).mockResolvedValue({
+            liked: true,
+            likesCount: 4,
+            slug: "meu-post",
+        });
+
+        const result = await toggleLikeAction(10);
+
+        expect(visitorServerModule.getOrCreateVisitorHashForAction).toHaveBeenCalled();
+        expect(postsModule.togglePostLike).toHaveBeenCalledWith(10, mockHash);
+        expect(result).toEqual({ success: true, liked: true, likesCount: 4 });
+    });
+
+    it("returns error when togglePostLike throws", async () => {
+        vi.mocked(postsModule.togglePostLike).mockRejectedValue(new Error("Post not found"));
+
+        const result = await toggleLikeAction(999);
+
+        expect(result).toEqual({ error: "Error toggling like" });
+    });
+});
+
+describe("recordPostReadAction", () => {
+    const mockHash = "b".repeat(64);
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        vi.mocked(visitorServerModule.getOrCreateVisitorHashForAction).mockResolvedValue(mockHash);
+    });
+
+    it("rejects invalid post IDs", async () => {
+        const result = await recordPostReadAction(0);
+        expect(result).toEqual({ success: false });
+        expect(postsModule.recordPostRead).not.toHaveBeenCalled();
+    });
+
+    it("records read for the visitor hash", async () => {
+        vi.mocked(postsModule.recordPostRead).mockResolvedValue(undefined);
+
+        const result = await recordPostReadAction(7);
+
+        expect(postsModule.recordPostRead).toHaveBeenCalledWith(7, mockHash);
+        expect(result).toEqual({ success: true });
+    });
+});
+
+describe("restoreVisitorHashAction", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it("rejects malformed visitor hashes", async () => {
+        const result = await restoreVisitorHashAction("invalid-hash");
+
+        expect(result).toEqual({ success: false });
+        expect(visitorServerModule.restoreVisitorHashCookie).not.toHaveBeenCalled();
+    });
+
+    it("restores valid visitor hash cookie", async () => {
+        const validHash = "c".repeat(64);
+        vi.mocked(visitorServerModule.restoreVisitorHashCookie).mockResolvedValue(undefined);
+
+        const result = await restoreVisitorHashAction(validHash);
+
+        expect(visitorServerModule.restoreVisitorHashCookie).toHaveBeenCalledWith(validHash);
+        expect(result).toEqual({ success: true });
     });
 });
