@@ -4,6 +4,7 @@ import { notFound } from "next/navigation"
 import { isAuthenticated } from "@/app/_lib/auth"
 import { selectPluralForm } from "@/app/_lib/i18n"
 import { getServerDictionary } from "@/app/_lib/i18n-server"
+import { buildTagFilterHref } from "@/app/_lib/post-filter"
 import { getVisitorHash } from "@/app/_lib/visitor-server"
 import CommentIcon from "@/components/CommentIcon"
 import CommentsSection from "@/components/CommentsSection"
@@ -69,15 +70,16 @@ export default async function Post({
                                 </div>
                             )}
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                             {post.tags?.map(tag => (
-                                <span
-                                    className="text-xs font-medium px-2.5 py-0.5 rounded-full text-gray-900"
+                                <Link
+                                    href={buildTagFilterHref(tag.name)}
+                                    className="text-xs font-medium px-2.5 py-0.5 rounded-full text-gray-900 hover:brightness-95 transition-all"
                                     style={{ backgroundColor: tag.color || '#d1d5dc' }}
                                     key={tag.id}
                                 >
                                     {tag.name}
-                                </span>
+                                </Link>
                             ))}
                         </div>
                     </div>

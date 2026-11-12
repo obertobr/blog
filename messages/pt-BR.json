@@ -24,6 +24,18 @@
   "postCard": {
     "untitled": "Sem título"
   },
+  "home": {
+    "searchPlaceholder": "Pesquisar posts...",
+    "searchAriaLabel": "Pesquisar posts",
+    "clearSearchAriaLabel": "Limpar pesquisa",
+    "tagsLabel": "Tags",
+    "allTags": "Todas",
+    "clearFilters": "Limpar filtros",
+    "resultSingular": "post encontrado",
+    "resultPlural": "posts encontrados",
+    "emptyNoPosts": "Nenhum post publicado ainda.",
+    "emptyFiltered": "Nenhum post encontrado para os filtros aplicados."
+  },
   "post": {
     "untitledDraft": "Rascunho sem título",
     "published": "Publicado",

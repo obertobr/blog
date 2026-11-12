@@ -58,6 +58,18 @@ export interface Dictionary {
     postCard: {
         untitled: string;
     };
+    home: {
+        searchPlaceholder: string;
+        searchAriaLabel: string;
+        clearSearchAriaLabel: string;
+        tagsLabel: string;
+        allTags: string;
+        clearFilters: string;
+        resultSingular: string;
+        resultPlural: string;
+        emptyNoPosts: string;
+        emptyFiltered: string;
+    };
     post: {
         untitledDraft: string;
         published: string;
