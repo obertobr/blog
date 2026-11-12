@@ -29,7 +29,7 @@ export default function DeletePostButton({ postId }: { postId: number }) {
             type="button"
             onClick={handleDelete}
             disabled={isPending}
-            className="text-xs text-red-600 hover:text-red-800 hover:font-bold cursor-pointer transition-all disabled:opacity-50"
+            className="text-xs text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 hover:font-bold cursor-pointer transition-all disabled:opacity-50"
         >
             {isPending ? "Excluindo..." : "Excluir Post"}
         </button>

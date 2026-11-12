@@ -28,14 +28,14 @@ export default async function Post({
 
     return (
         <div className="max-w-4xl mx-auto">
-            <div className="m-5 bg-white border border-gray-300 rounded-lg">
-                <header className="border-b border-gray-300 p-6 pt-4 pb-6">
-                    <h1 className="text-3xl sm:text-5xl mb-3 font-bold">{post.title || "Rascunho sem título"}</h1>
+            <div className="m-5 bg-white dark:bg-gh-surface border border-gray-300 dark:border-gh-border rounded-lg shadow-xs">
+                <header className="border-b border-gray-300 dark:border-gh-border p-6 pt-4 pb-6">
+                    <h1 className="text-3xl sm:text-5xl mb-3 font-bold text-gray-900 dark:text-gh-text">{post.title || "Rascunho sem título"}</h1>
                     <div className="flex justify-between items-center flex-wrap gap-2">
                         <div className="flex items-center gap-3">
-                            <RelativeDate date={post.createdAt} prefix="Publicado" className="text-gray-600" />
+                            <RelativeDate date={post.createdAt} prefix="Publicado" className="text-gray-600 dark:text-gh-muted" />
                             {!post.published && (
-                                <span className="text-xs font-semibold px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
+                                <span className="text-xs font-semibold px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
                                     Rascunho
                                 </span>
                             )}
@@ -43,11 +43,11 @@ export default async function Post({
                                 <div className="flex items-center gap-2">
                                     <Link
                                         href={`/createPost?id=${post.id}`}
-                                        className="text-xs text-sky-600 hover:text-sky-800 hover:font-bold cursor-pointer transition-all"
+                                        className="text-xs text-sky-600 hover:text-sky-800 dark:text-gh-blue dark:hover:text-gh-blue-hover hover:font-bold cursor-pointer transition-all"
                                     >
                                         Editar {post.published ? "Post" : "Rascunho"}
                                     </Link>
-                                    <span className="text-gray-300">•</span>
+                                    <span className="text-gray-300 dark:text-gh-border">•</span>
                                     <DeletePostButton postId={post.id} />
                                 </div>
                             )}
@@ -55,7 +55,7 @@ export default async function Post({
                         <div className="flex gap-2">
                             {post.tags?.map(tag => (
                                 <span
-                                    className="text-xs font-medium px-2.5 py-0.5 rounded-full"
+                                    className="text-xs font-medium px-2.5 py-0.5 rounded-full text-gray-900"
                                     style={{ backgroundColor: tag.color || '#d1d5dc' }}
                                     key={tag.id}
                                 >
@@ -65,7 +65,7 @@ export default async function Post({
                         </div>
                     </div>
                 </header>
-                <article className="prose max-w-none p-6 pt-5 prose-hr:mt-3 prose-hr:mb-3">
+                <article className="prose dark:prose-invert max-w-none p-6 pt-5 prose-hr:mt-3 prose-hr:mb-3">
                     <div dangerouslySetInnerHTML={{ __html: contentRemark }} />
                 </article>
             </div>

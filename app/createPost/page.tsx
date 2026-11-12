@@ -13,6 +13,8 @@ import { getTags } from "../_lib/posts"
 import Asset from "@/components/Asset"
 import ReuseImageModal from "@/components/ReuseImageModal"
 import DraftsModal from "@/components/DraftsModal"
+import { useTheme } from "@/components/ThemeProvider"
+import { ThemeMode } from "../_lib/theme"
 
 export const AutoSaveStatus = {
     Idle: "idle",
@@ -73,6 +75,7 @@ function getImagesFromDataTransfer(data: DataTransfer | null): File[] {
 }
 
 export default function CreatePost() {
+    const { resolvedTheme } = useTheme();
     const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
 
     const [state, formAction] = useActionState(createPostAction, initialState);
@@ -567,7 +570,7 @@ export default function CreatePost() {
 
     return (
         <div className="flex flex-col h-[89vh]">
-            <div className="flex p-2 justify-between items-center border-b border-gray-300 bg-white">
+            <div className="flex p-2 justify-between items-center border-b border-gray-300 dark:border-gh-border bg-white dark:bg-gh-surface transition-colors">
                 <div className="flex gap-2 items-center flex-wrap">
                     <button
                         type="button"
@@ -579,7 +582,7 @@ export default function CreatePost() {
                     {!isPublishedPost ? (
                         <button
                             type="button"
-                            className="bg-white border border-gray-300 p-1.5 px-3 rounded-lg font-medium text-gray-700 hover:text-gray-900 transition hover:border-gray-500 cursor-pointer text-sm"
+                            className="bg-white dark:bg-gh-subtle border border-gray-300 dark:border-gh-border p-1.5 px-3 rounded-lg font-medium text-gray-700 dark:text-gh-text hover:text-gray-900 dark:hover:text-white transition hover:border-gray-500 dark:hover:border-gh-muted cursor-pointer text-sm"
                             onClick={() => saveDraft(true)}
                         >
                             Salvar Rascunho
@@ -587,7 +590,7 @@ export default function CreatePost() {
                     ) : (
                         <button
                             type="button"
-                            className="bg-white border border-amber-300 p-1.5 px-3 rounded-lg font-medium text-amber-700 hover:text-amber-900 hover:bg-amber-50 transition cursor-pointer text-sm"
+                            className="bg-white dark:bg-gh-subtle border border-amber-300 dark:border-amber-700 p-1.5 px-3 rounded-lg font-medium text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition cursor-pointer text-sm"
                             onClick={handleUnpublish}
                         >
                             Despublicar
@@ -596,7 +599,7 @@ export default function CreatePost() {
                     {postId !== null && (
                         <button
                             type="button"
-                            className="bg-white border border-gray-300 p-1.5 px-3 rounded-lg font-medium text-gray-600 hover:text-gray-900 transition hover:border-gray-500 cursor-pointer text-sm"
+                            className="bg-white dark:bg-gh-subtle border border-gray-300 dark:border-gh-border p-1.5 px-3 rounded-lg font-medium text-gray-600 dark:text-gh-muted hover:text-gray-900 dark:hover:text-white transition hover:border-gray-500 dark:hover:border-gh-muted cursor-pointer text-sm"
                             onClick={handleNewPost}
                         >
                             Novo Post
@@ -604,25 +607,25 @@ export default function CreatePost() {
                     )}
                     <div className="ml-2 flex items-center min-h-[20px]">
                         {saveStatus === AutoSaveStatus.Saving && (
-                            <span className="text-xs text-sky-600 flex items-center gap-1.5 font-medium animate-pulse">
+                            <span className="text-xs text-sky-600 dark:text-gh-blue flex items-center gap-1.5 font-medium animate-pulse">
                                 <span className="inline-block w-2 h-2 rounded-full bg-sky-500"></span>
                                 Salvando rascunho...
                             </span>
                         )}
                         {saveStatus === AutoSaveStatus.Saved && (
-                            <span className="text-xs text-emerald-600 flex items-center gap-1.5 font-medium">
+                            <span className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 font-medium">
                                 <span className="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
                                 Salvo {lastSavedTime ? `às ${lastSavedTime}` : ""}
                             </span>
                         )}
                         {saveStatus === AutoSaveStatus.Dirty && (
-                            <span className="text-xs text-amber-600 flex items-center gap-1.5 font-medium">
+                            <span className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5 font-medium">
                                 <span className="inline-block w-2 h-2 rounded-full bg-amber-500"></span>
                                 Alterações não salvas...
                             </span>
                         )}
                         {saveStatus === AutoSaveStatus.Error && (
-                            <span className="text-xs text-red-600 flex items-center gap-1.5 font-medium">
+                            <span className="text-xs text-red-600 dark:text-red-400 flex items-center gap-1.5 font-medium">
                                 <span className="inline-block w-2 h-2 rounded-full bg-red-500"></span>
                                 Erro ao salvar
                             </span>
@@ -633,14 +636,14 @@ export default function CreatePost() {
                     <button
                         type="button"
                         onClick={() => setDraftsModalOpen(true)}
-                        className="bg-white border border-gray-300 p-1.5 px-3 rounded-lg font-medium text-gray-700 hover:text-gray-900 transition hover:border-gray-500 cursor-pointer text-sm"
+                        className="bg-white dark:bg-gh-subtle border border-gray-300 dark:border-gh-border p-1.5 px-3 rounded-lg font-medium text-gray-700 dark:text-gh-text hover:text-gray-900 dark:hover:text-white transition hover:border-gray-500 dark:hover:border-gh-muted cursor-pointer text-sm"
                     >
                         Rascunhos
                     </button>
                     <button
                         type="button"
                         onClick={() => { settingsSetOpen(!settingsOpen) }}
-                        className="bg-white border border-gray-300 p-1.5 px-3 rounded-lg font-medium text-gray-700 hover:text-gray-900 transition hover:border-gray-500 cursor-pointer text-sm"
+                        className="bg-white dark:bg-gh-subtle border border-gray-300 dark:border-gh-border p-1.5 px-3 rounded-lg font-medium text-gray-700 dark:text-gh-text hover:text-gray-900 dark:hover:text-white transition hover:border-gray-500 dark:hover:border-gh-muted cursor-pointer text-sm"
                     >
                         Configurações
                     </button>
@@ -667,11 +670,11 @@ export default function CreatePost() {
                         uploadAndInsertImages(imageFiles);
                     }
                 }}
-                className="flex w-full h-full bg-white border-b border-gray-200 relative"
+                className="flex w-full h-full bg-white dark:bg-gh-canvas border-b border-gray-200 dark:border-gh-border relative"
             >
                 {isDragging && (
                     <div className="absolute inset-0 bg-sky-500/10 border-2 border-dashed border-sky-500 z-40 flex items-center justify-center pointer-events-none backdrop-blur-[1px]">
-                        <span className="bg-white px-4 py-2 rounded-lg shadow-md text-sky-700 font-semibold text-base border border-sky-200">
+                        <span className="bg-white dark:bg-gh-surface px-4 py-2 rounded-lg shadow-md text-sky-700 dark:text-gh-blue font-semibold text-base border border-sky-200 dark:border-gh-border">
                             Solte a imagem aqui para adicionar ao post
                         </span>
                     </div>
@@ -680,6 +683,7 @@ export default function CreatePost() {
                     <div id="editor-wrapper" className="h-full">
                         <Editor
                             language="markdown"
+                            theme={resolvedTheme === ThemeMode.Dark ? "vs-dark" : "vs"}
                             options={optionsEditor}
                             onMount={handleEditorDidMount}
                             onChange={handleEditorChange}
@@ -688,60 +692,92 @@ export default function CreatePost() {
                     </div>
                 </div>
 
-                <div id="split-divider" className="w-[5px] bg-gray-300 cursor-col-resize z-[1] hover:bg-gray-600 transition"></div>
+                <div id="split-divider" className="w-[5px] bg-gray-300 dark:bg-gh-border cursor-col-resize z-[1] hover:bg-gray-600 dark:hover:bg-gh-muted transition"></div>
 
-                <div id="preview" className="w-1/2 m-0 p-0 whitespace-normal align-top h-full overflow-y-scroll">
+                <div id="preview" className="w-1/2 m-0 p-0 whitespace-normal align-top h-full overflow-y-scroll bg-white dark:bg-gh-canvas">
                     <div id="preview-wrapper" className="px-4 pt-2 pb-4">
-                        <div id="output" className="content markdown-body prose max-w-none prose-hr:mt-3 prose-hr:mb-3" dangerouslySetInnerHTML={{ __html: previewHtml }}></div>
+                        <div id="output" className="content markdown-body prose dark:prose-invert max-w-none prose-hr:mt-3 prose-hr:mb-3" dangerouslySetInnerHTML={{ __html: previewHtml }}></div>
                     </div>
                 </div>
             </div>
 
             <div onClick={() => { settingsSetOpen(!settingsOpen) }} className={`fixed inset-0 bg-black opacity-40 z-20 ${!settingsOpen && "hidden"}`}></div>
-            <div className={`fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-2xl z-30 transform transition-transform duration-300 ease-in-out flex flex-col ${!settingsOpen && "translate-x-full"}`}>
-                <div className="p-4 border-b border-gray-300 flex justify-between items-center bg-gray-50 flex-shrink-0">
-                    <h2 className="text-lg font-semibold">Configurações do Post</h2>
-                    <button id="close-settings-btn" className="p-2 cursor-pointer text-gray-600 hover:text-black" onClick={() => { settingsSetOpen(!settingsOpen) }}>
+            <div className={`fixed top-0 right-0 h-full w-full max-w-md bg-white dark:bg-gh-surface border-l border-gray-200 dark:border-gh-border shadow-2xl z-30 transform transition-transform duration-300 ease-in-out flex flex-col ${!settingsOpen && "translate-x-full"}`}>
+                <div className="p-4 border-b border-gray-300 dark:border-gh-border flex justify-between items-center bg-gray-50 dark:bg-gh-subtle flex-shrink-0">
+                    <h2 className="text-lg font-semibold text-gray-800 dark:text-gh-text">Configurações do Post</h2>
+                    <button id="close-settings-btn" className="p-2 cursor-pointer text-gray-600 dark:text-gh-muted hover:text-black dark:hover:text-white" onClick={() => { settingsSetOpen(!settingsOpen) }}>
                         🗙︎
                     </button>
                 </div>
                 <div className="p-4 flex flex-col gap-4">
                     <div>
-                        <label htmlFor="post-title" className="block text-sm font-medium text-slate-600 mb-1">Título do Post</label>
+                        <label htmlFor="post-title" className="block text-sm font-medium text-slate-600 dark:text-gh-muted mb-1">Título do Post</label>
                         <input
                             type="text"
                             id="post-title"
                             placeholder="Título do Post"
-                            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition"
+                            className="w-full px-4 py-2 border border-slate-300 dark:border-gh-border bg-white dark:bg-gh-canvas text-gray-900 dark:text-gh-text placeholder-gray-400 dark:placeholder-gh-muted rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition"
                             value={title}
                             onChange={(e) => { setTitle(e.target.value) }}
                         />
                     </div>
                     <div>
-                        <label htmlFor="post-tags" className="block text-sm font-medium text-slate-600 mb-1">Tags</label>
+                        <label htmlFor="post-tags" className="block text-sm font-medium text-slate-600 dark:text-gh-muted mb-1">Tags</label>
                         <CreatableSelect
                             instanceId="tag"
                             isMulti
                             options={allTags}
                             value={tags.map(t => ({ value: t, label: t }))}
                             onChange={(selected) => setTags(selected.map(item => item.value))}
+                            styles={{
+                                control: (base, state) => ({
+                                    ...base,
+                                    backgroundColor: resolvedTheme === ThemeMode.Dark ? "#0d1117" : "#ffffff",
+                                    borderColor: resolvedTheme === ThemeMode.Dark ? "#30363d" : "#cbd5e1",
+                                    boxShadow: state.isFocused ? "0 0 0 2px rgba(88, 166, 255, 0.4)" : "none",
+                                }),
+                                menu: (base) => ({
+                                    ...base,
+                                    backgroundColor: resolvedTheme === ThemeMode.Dark ? "#161b22" : "#ffffff",
+                                    borderColor: resolvedTheme === ThemeMode.Dark ? "#30363d" : "#e5e7eb",
+                                }),
+                                option: (base, state) => ({
+                                    ...base,
+                                    backgroundColor: state.isFocused
+                                        ? (resolvedTheme === ThemeMode.Dark ? "#21262d" : "#f1f5f9")
+                                        : "transparent",
+                                    color: resolvedTheme === ThemeMode.Dark ? "#e6edf3" : "#1f2328",
+                                }),
+                                multiValue: (base) => ({
+                                    ...base,
+                                    backgroundColor: resolvedTheme === ThemeMode.Dark ? "#21262d" : "#e2e8f0",
+                                }),
+                                multiValueLabel: (base) => ({
+                                    ...base,
+                                    color: resolvedTheme === ThemeMode.Dark ? "#e6edf3" : "#1e293b",
+                                }),
+                                input: (base) => ({
+                                    ...base,
+                                    color: resolvedTheme === ThemeMode.Dark ? "#e6edf3" : "#1f2328",
+                                }),
+                            }}
                         />
                     </div>
                 </div>
             </div>
-            <div className={`fixed bottom-0 right-0 h-full w-full max-h-40 border-t border-gray-300 bg-white shadow-2xl z-30 transform transition-transform duration-300 ease-in-out ${!assetsOpen && "translate-y-full"}`}>
-                <button className="cursor-pointer font-medium text-gray-400 absolute left-[50%] -top-6.5 bg-white border border-gray-300 border-b-0 rounded-t-lg -translate-x-1/2 hover:text-gray-700 hover:border-gray-700 transition-all" onClick={() => { assetsSetOpen(!assetsOpen) }}> Assets </button>
+            <div className={`fixed bottom-0 right-0 h-full w-full max-h-40 border-t border-gray-300 dark:border-gh-border bg-white dark:bg-gh-surface shadow-2xl z-30 transform transition-transform duration-300 ease-in-out ${!assetsOpen && "translate-y-full"}`}>
+                <button className="cursor-pointer font-medium text-gray-400 dark:text-gh-muted absolute left-[50%] -top-6.5 bg-white dark:bg-gh-surface border border-gray-300 dark:border-gh-border border-b-0 rounded-t-lg -translate-x-1/2 hover:text-gray-700 dark:hover:text-white hover:border-gray-700 dark:hover:border-gh-muted transition-all" onClick={() => { assetsSetOpen(!assetsOpen) }}> Assets </button>
                 <div className="flex h-full p-2 gap-2 overflow-x-auto overflow-y-hidden">
-                    <div className="bg-sky-50 text-sky-700 border-2 border-dashed border-sky-200 rounded-lg font-medium flex-shrink-0 flex flex-col justify-evenly">
-                        <label htmlFor="image-upload" className="w-full cursor-pointer flex items-center justify-center h-full p-2 hover:bg-sky-100 transition">
+                    <div className="bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-gh-blue border-2 border-dashed border-sky-200 dark:border-sky-800/60 rounded-lg font-medium flex-shrink-0 flex flex-col justify-evenly">
+                        <label htmlFor="image-upload" className="w-full cursor-pointer flex items-center justify-center h-full p-2 hover:bg-sky-100 dark:hover:bg-sky-900/40 transition">
                             <span>Upload imagem</span>
                         </label>
                         <input type="file" id="image-upload" className="hidden" multiple accept="image/*" onChange={handleImageInput}></input>
-                        <hr className="border-dashed border-sky-200 border-t-2" />
+                        <hr className="border-dashed border-sky-200 dark:border-sky-800/60 border-t-2" />
                         <button
                             type="button"
                             onClick={() => setReuseModalOpen(true)}
-                            className="w-full cursor-pointer flex items-center justify-center h-full p-2 hover:bg-sky-100 transition"
+                            className="w-full cursor-pointer flex items-center justify-center h-full p-2 hover:bg-sky-100 dark:hover:bg-sky-900/40 transition"
                         >
                             Reutilizar imagem
                         </button>

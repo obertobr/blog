@@ -104,15 +104,15 @@ export default function AdminPanel() {
 
     return (
         <div className="flex flex-col items-center">
-            <h1 className="text-4xl font-bold m-3">Tags</h1>
+            <h1 className="text-4xl font-bold m-3 text-gray-900 dark:text-gh-text">Tags</h1>
 
-            <div className="border border-black rounded p-1 flex flex-col gap-1 min-w-[280px]">
+            <div className="border border-gray-300 dark:border-gh-border bg-white dark:bg-gh-surface rounded-lg p-2 flex flex-col gap-2 min-w-[300px] shadow-xs">
                 {tags.map(tag => (
-                    <div className="border border-gray-300 rounded p-3 flex items-center justify-between gap-5" key={tag.id}>
+                    <div className="border border-gray-200 dark:border-gh-border bg-gray-50 dark:bg-gh-subtle rounded-md p-3 flex items-center justify-between gap-5" key={tag.id}>
 
                         <div className="flex gap-2 items-center">
                             <div
-                                className="w-6 h-6 rounded cursor-pointer border border-gray-300"
+                                className="w-6 h-6 rounded cursor-pointer border border-gray-300 dark:border-gh-border"
                                 style={{ backgroundColor: tag.color || '#d1d5dc' }}
                                 onClick={() => document.getElementById(`color-${tag.id}`)?.click()}
                             >
@@ -129,9 +129,9 @@ export default function AdminPanel() {
                                     }}
                                 />
                             </div>
-                            <span className="font-bold">{tag.name}</span>
+                            <span className="font-bold text-gray-900 dark:text-gh-text">{tag.name}</span>
                         </div>
-                        <button className="cursor-pointer text-gray-600 hover:text-red-800" onClick={() => handleDeleteTag(tag)} >🗙︎</button>
+                        <button className="cursor-pointer text-gray-400 dark:text-gh-muted hover:text-red-600 dark:hover:text-red-400 transition" onClick={() => handleDeleteTag(tag)} >🗙︎</button>
                     </div>
                 ))}
             </div>

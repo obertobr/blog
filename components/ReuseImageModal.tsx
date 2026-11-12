@@ -87,38 +87,38 @@ export default function ReuseImageModal({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col border border-gray-200">
-                <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 rounded-t-xl">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-[2px]">
+            <div className="bg-white dark:bg-gh-surface rounded-xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col border border-gray-200 dark:border-gh-border">
+                <div className="p-4 border-b border-gray-200 dark:border-gh-border flex justify-between items-center bg-gray-50 dark:bg-gh-subtle rounded-t-xl">
                     <div>
-                        <h2 className="text-lg font-bold text-gray-800">Reutilizar Imagens</h2>
-                        <p className="text-xs text-gray-500">Selecione imagens já salvas no site para adicionar a este post</p>
+                        <h2 className="text-lg font-bold text-gray-800 dark:text-gh-text">Reutilizar Imagens</h2>
+                        <p className="text-xs text-gray-500 dark:text-gh-muted">Selecione imagens já salvas no site para adicionar a este post</p>
                     </div>
                     <button
                         type="button"
                         onClick={onClose}
-                        className="text-gray-400 hover:text-gray-700 text-xl font-bold cursor-pointer p-1"
+                        className="text-gray-400 hover:text-gray-700 dark:hover:text-gh-text text-xl font-bold cursor-pointer p-1"
                     >
                         🗙
                     </button>
                 </div>
 
-                <div className="p-3 border-b border-gray-200 bg-white">
+                <div className="p-3 border-b border-gray-200 dark:border-gh-border bg-white dark:bg-gh-surface">
                     <input
                         type="text"
                         placeholder="Pesquisar por nome da imagem..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         autoFocus
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gh-border bg-white dark:bg-gh-canvas text-gray-900 dark:text-gh-text placeholder-gray-400 dark:placeholder-gh-muted rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-4">
                     {isLoading ? (
-                        <div className="py-12 text-center text-gray-400 text-sm">Carregando imagens...</div>
+                        <div className="py-12 text-center text-gray-400 dark:text-gh-muted text-sm">Carregando imagens...</div>
                     ) : filteredImages.length === 0 ? (
-                        <div className="py-12 text-center text-gray-400 text-sm">
+                        <div className="py-12 text-center text-gray-400 dark:text-gh-muted text-sm">
                             {images.length === 0
                                 ? "Nenhuma imagem salva no servidor ainda."
                                 : "Nenhuma imagem encontrada com esse termo de busca."}
@@ -138,7 +138,7 @@ export default function ReuseImageModal({
                                                 ? "border-blue-600 ring-2 ring-blue-400"
                                                 : isAlreadyInAssets
                                                 ? "border-emerald-500 opacity-80"
-                                                : "border-gray-200 hover:border-blue-400"
+                                                : "border-gray-200 dark:border-gh-border hover:border-blue-400 dark:hover:border-gh-blue"
                                         }`}
                                         title={isAlreadyInAssets ? "Já adicionada aos assets" : "Clique na imagem para adicionar aos assets"}
                                     >
@@ -184,15 +184,15 @@ export default function ReuseImageModal({
                     )}
                 </div>
 
-                <div className="p-3 border-t border-gray-200 bg-gray-50 rounded-b-xl flex justify-between items-center">
-                    <span className="text-xs text-gray-500">
+                <div className="p-3 border-t border-gray-200 dark:border-gh-border bg-gray-50 dark:bg-gh-subtle rounded-b-xl flex justify-between items-center">
+                    <span className="text-xs text-gray-500 dark:text-gh-muted">
                         {filteredImages.length} imagem(ns) | {selectedUrls.length} selecionada(s)
                     </span>
                     <div className="flex gap-2">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-200 rounded-lg transition cursor-pointer"
+                            className="px-3 py-1.5 text-sm text-gray-600 dark:text-gh-muted hover:bg-gray-200 dark:hover:bg-[#30363d] rounded-lg transition cursor-pointer"
                         >
                             Cancelar
                         </button>

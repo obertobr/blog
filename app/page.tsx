@@ -20,7 +20,8 @@ export default async function Home() {
                     before:left-5
                     before:border-l-2
                     before:border-dotted
-                    before:border-gray-300">
+                    before:border-gray-300
+                    dark:before:border-gh-border">
       {posts.map(post => (
         <PostCard post={post} key={post.slug} />
       ))}

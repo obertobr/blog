@@ -21,12 +21,12 @@ export default function Asset({ url, onDelete }: AssetProps) {
     };
 
     return (
-        <div className="relative aspect-square rounded-lg overflow-hidden border-2 border-gray-400 flex-shrink-0">
+        <div className="relative aspect-square rounded-lg overflow-hidden border-2 border-gray-400 dark:border-gh-border flex-shrink-0">
             <img className="w-full h-full object-cover object-center" src={url} alt={altText} />
             <button
                 type="button"
                 onClick={handleCopy}
-                className="absolute bottom-1 left-[50%] -translate-x-1/2 p-1 pl-3 pr-3 text-sm bg-white rounded-md shadow-sm/70 cursor-pointer hover:shadow-md/70 transition"
+                className="absolute bottom-1 left-[50%] -translate-x-1/2 p-1 pl-3 pr-3 text-sm bg-white dark:bg-gh-subtle text-gray-800 dark:text-gh-text border border-gray-200 dark:border-gh-border rounded-md shadow-xs cursor-pointer hover:bg-gray-100 dark:hover:bg-[#30363d] transition"
             >
                 Copiar
             </button>

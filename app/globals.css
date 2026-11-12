@@ -1,2 +1,35 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-gh-canvas: #0d1117;
+  --color-gh-surface: #161b22;
+  --color-gh-subtle: #21262d;
+  --color-gh-border: #30363d;
+  --color-gh-border-muted: #21262d;
+  --color-gh-text: #e6edf3;
+  --color-gh-muted: #8b949e;
+  --color-gh-blue: #58a6ff;
+  --color-gh-blue-hover: #2f81f7;
+}
+
+.dark .prose {
+  --tw-prose-body: #e6edf3;
+  --tw-prose-headings: #f0f6fc;
+  --tw-prose-lead: #8b949e;
+  --tw-prose-links: #58a6ff;
+  --tw-prose-bold: #f0f6fc;
+  --tw-prose-counters: #8b949e;
+  --tw-prose-bullets: #484f58;
+  --tw-prose-hr: #30363d;
+  --tw-prose-quotes: #8b949e;
+  --tw-prose-quote-borders: #30363d;
+  --tw-prose-captions: #8b949e;
+  --tw-prose-code: #e6edf3;
+  --tw-prose-pre-code: #e6edf3;
+  --tw-prose-pre-bg: #161b22;
+  --tw-prose-th-borders: #30363d;
+  --tw-prose-td-borders: #21262d;
+}
