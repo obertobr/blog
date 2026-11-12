@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { deletePostAction, listDraftsAction } from "@/app/_lib/actions";
+import RelativeDate from "./RelativeDate";
 
 interface DraftItem {
     id: number;
@@ -108,10 +109,6 @@ export default function DraftsModal({
 
                     {!loading && drafts.map(draft => {
                         const isCurrent = currentDraftId === draft.id;
-                        const dateFormatted = new Date(draft.updatedAt).toLocaleString("pt-BR", {
-                            dateStyle: "short",
-                            timeStyle: "short",
-                        });
 
                         return (
                             <div
@@ -139,7 +136,7 @@ export default function DraftsModal({
                                         {draft.content ? draft.content.replace(/[#*`_>]/g, "").slice(0, 120) : "Sem conteúdo"}
                                     </p>
                                     <div className="flex items-center gap-2 mt-1.5 text-[11px] text-gray-400">
-                                        <span>Última alteração: {dateFormatted}</span>
+                                        <RelativeDate date={draft.updatedAt} prefix="Última alteração:" className="text-[11px] text-gray-400" />
                                         {draft.tags.length > 0 && (
                                             <>
                                                 <span>•</span>

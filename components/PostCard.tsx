@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import Link from "next/link";
+import RelativeDate from "./RelativeDate";
 
 export type PostWithTags = Prisma.PostGetPayload<{
   include: { tags: true }
@@ -33,7 +34,7 @@ export default function PostCard({ post }: PostCardProps) {
                                                      before:outline-gray-50">
             <div className='p-3 rounded-md bg-white hover:bg-gray-50 border border-gray-300 shadow-sm hover:shadow-md transition-shadow duration-200'>
                 <div className="flex justify-between items-center mb-1">
-                    <span className='text-sm text-gray-500'>{post.createdAt.toDateString()}</span>
+                    <RelativeDate date={post.createdAt} className="text-sm text-gray-500" />
                     <div className="flex gap-2">
                         {post.tags?.map(tag => (
                             <span

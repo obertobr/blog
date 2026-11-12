@@ -3,6 +3,7 @@ import { markdownToHtml } from "@/app/_lib/util"
 import { notFound } from "next/navigation"
 import { isAuthenticated } from "@/app/_lib/auth"
 import DeletePostButton from "@/components/DeletePostButton"
+import RelativeDate from "@/components/RelativeDate"
 import Link from "next/link"
 
 export default async function Post({
@@ -32,7 +33,7 @@ export default async function Post({
                     <h1 className="text-3xl sm:text-5xl mb-3 font-bold">{post.title || "Rascunho sem título"}</h1>
                     <div className="flex justify-between items-center flex-wrap gap-2">
                         <div className="flex items-center gap-3">
-                            <span className="text-gray-600">Publicado em {post.createdAt.toDateString()}</span>
+                            <RelativeDate date={post.createdAt} prefix="Publicado" className="text-gray-600" />
                             {!post.published && (
                                 <span className="text-xs font-semibold px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
                                     Rascunho
