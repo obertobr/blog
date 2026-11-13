@@ -1,12 +1,26 @@
-import { getServerDictionary } from "../_lib/i18n-server";
+import HomeFeed from "@/components/HomeFeed";
+import { parseHomeFilterParams } from "../_lib/post-filter";
+import { getRelevantPosts } from "../_lib/posts";
+import { getVisitorHash } from "../_lib/visitor-server";
 
-export default async function RelevantPage() {
-    const { t } = await getServerDictionary();
+export default async function RelevantPage({
+    searchParams,
+}: {
+    searchParams: Promise<{ q?: string | string[]; tag?: string | string[] }>;
+}) {
+    const [resolvedParams, visitorHash] = await Promise.all([
+        searchParams,
+        getVisitorHash(),
+    ]);
+    const { query, tag } = parseHomeFilterParams(resolvedParams);
+    const { posts } = await getRelevantPosts(visitorHash);
 
     return (
-        <div className="max-w-4xl mx-auto p-10 text-center flex flex-col items-center gap-3">
-            <h1 className="text-3xl font-bold text-gray-800 dark:text-gh-text">{t.relevant.title}</h1>
-            <p className="text-gray-500 dark:text-gh-muted">{t.relevant.description}</p>
-        </div>
+        <HomeFeed
+            initialPosts={posts}
+            initialQuery={query}
+            initialTag={tag}
+            basePath="/relevant"
+        />
     );
 }

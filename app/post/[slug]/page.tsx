@@ -5,6 +5,7 @@ import { isAuthenticated } from "@/app/_lib/auth"
 import { selectPluralForm } from "@/app/_lib/i18n"
 import { getServerDictionary } from "@/app/_lib/i18n-server"
 import { buildTagFilterHref } from "@/app/_lib/post-filter"
+import { calculateMinimumReadTimeMs } from "@/app/_lib/recommendation"
 import { getVisitorHash } from "@/app/_lib/visitor-server"
 import CommentIcon from "@/components/CommentIcon"
 import CommentsSection from "@/components/CommentsSection"
@@ -43,6 +44,7 @@ export default async function Post({
     const initialLikesCount = post._count?.likes ?? 0
     const initialLiked = Boolean(post.likes && post.likes.length > 0)
     const commentsCount = comments.length
+    const { minReadTimeMs } = calculateMinimumReadTimeMs(post.content || "")
 
     return (
         <div className="max-w-4xl mx-auto">
@@ -89,7 +91,7 @@ export default async function Post({
                 </article>
                 {post.published && (
                     <>
-                        <PostReadTracker postId={post.id} />
+                        <PostReadTracker postId={post.id} minReadTimeMs={minReadTimeMs} />
                         <footer className="border-t border-gray-300 dark:border-gh-border px-6 py-4 bg-gray-50/50 dark:bg-gh-subtle/30 rounded-b-lg flex items-center justify-between gap-4 flex-wrap">
                             <LikeButton
                                 postId={post.id}

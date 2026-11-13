@@ -74,14 +74,19 @@ model PostLike {
 }
 
 model PostRead {
-  id        Int      @id @default(autoincrement())
-  postId    Int
-  visitorId Int
-  readCount Int      @default(1)
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  visitor   Visitor  @relation(fields: [visitorId], references: [id], onDelete: Cascade)
-  firstRead DateTime @default(now())
-  lastRead  DateTime @updatedAt
+  id             Int       @id @default(autoincrement())
+  postId         Int
+  visitorId      Int
+  readCount      Int       @default(1)
+  viewStartedAt  DateTime?
+  maxScrollDepth Float     @default(0)
+  activeTimeMs   Int       @default(0)
+  completedCount Int       @default(0)
+  completedAt    DateTime?
+  post           Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  visitor        Visitor   @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  firstRead      DateTime  @default(now())
+  lastRead       DateTime  @updatedAt
 
   @@unique([postId, visitorId])
   @@index([postId])

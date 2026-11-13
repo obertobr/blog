@@ -10,6 +10,7 @@ import {
     listDraftsAction,
     loginAction,
     recordPostReadAction,
+    recordPostReadProgressAction,
     restoreVisitorHashAction,
     saveAssetAction,
     saveDraftAction,
@@ -40,6 +41,7 @@ vi.mock("../app/_lib/posts", () => ({
     isAssetUsedInOtherPosts: vi.fn(),
     togglePostLike: vi.fn(),
     recordPostRead: vi.fn(),
+    recordPostReadProgress: vi.fn(),
     createPostComment: vi.fn(),
     deletePostComment: vi.fn(),
 }));
@@ -795,6 +797,44 @@ describe("recordPostReadAction", () => {
 
         expect(postsModule.recordPostRead).toHaveBeenCalledWith(7, mockHash);
         expect(result).toEqual({ success: true });
+    });
+});
+
+describe("recordPostReadProgressAction", () => {
+    const mockHash = "b".repeat(64);
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        vi.mocked(visitorServerModule.getOrCreateVisitorHashForAction).mockResolvedValue(mockHash);
+    });
+
+    it("rejects invalid progress payloads", async () => {
+        const result = await recordPostReadProgressAction({
+            postId: 0,
+            activeTimeMs: -10,
+            scrollDepth: 2,
+            reachedEnd: true,
+        });
+
+        expect(result).toEqual({ success: false });
+        expect(postsModule.recordPostReadProgress).not.toHaveBeenCalled();
+    });
+
+    it("records verified read progress for valid input", async () => {
+        vi.mocked(postsModule.recordPostReadProgress).mockResolvedValue({ verified: true });
+
+        const payload = {
+            postId: 7,
+            activeTimeMs: 18_000,
+            scrollDepth: 1,
+            reachedEnd: true,
+            enteredAtMs: 1_000,
+            completedAtMs: 19_000,
+        };
+        const result = await recordPostReadProgressAction(payload);
+
+        expect(postsModule.recordPostReadProgress).toHaveBeenCalledWith(payload, mockHash);
+        expect(result).toEqual({ success: true, verified: true });
     });
 });
 

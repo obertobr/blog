@@ -3,13 +3,14 @@ import path from "path";
 import crypto from "crypto";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { createPost, createPostComment, createTag, deletePost, deletePostComment, deleteTag, getDrafts, getPostById, getPostBySlug, isAssetUsedInOtherPosts, recordPostRead, togglePostLike, updatePost, updateTag } from "./posts"
+import { createPost, createPostComment, createTag, deletePost, deletePostComment, deleteTag, getDrafts, getPostById, getPostBySlug, isAssetUsedInOtherPosts, recordPostRead, recordPostReadProgress, togglePostLike, updatePost, updateTag } from "./posts"
 import { extractAssetUrls, slugify } from "./util"
 import { mkdir, readdir, stat, unlink, writeFile } from "fs/promises"
 import { clearAdminSession, isAuthenticated, isValidPassword, setAdminSession } from "./auth"
 import { visitorHashSchema } from "./visitor"
 import { getOrCreateVisitorHashForAction, getVisitorHash, restoreVisitorHashCookie } from "./visitor-server"
 import { CommentErrorCode, CreateCommentInput, PublicComment, validateAndPrepareComment } from "./comment"
+import { ReadProgressInput, readProgressInputSchema } from "./recommendation"
 
 const postIdSchema = z.number().int().positive();
 
@@ -485,6 +486,7 @@ export async function toggleLikeAction(postId: number): Promise<
         const visitorHash = await getOrCreateVisitorHashForAction();
         const result = await togglePostLike(parsedId.data, visitorHash);
         revalidatePath("/");
+        revalidatePath("/relevant");
         revalidatePath(`/post/${result.slug}`);
         return {
             success: true,
@@ -506,6 +508,26 @@ export async function recordPostReadAction(postId: number): Promise<{ success: b
         const visitorHash = await getOrCreateVisitorHashForAction();
         await recordPostRead(parsedId.data, visitorHash);
         return { success: true };
+    } catch {
+        return { success: false };
+    }
+}
+
+export async function recordPostReadProgressAction(
+    input: ReadProgressInput
+): Promise<{ success: boolean; verified?: boolean }> {
+    const parsed = readProgressInputSchema.safeParse(input);
+    if (!parsed.success) {
+        return { success: false };
+    }
+
+    try {
+        const visitorHash = await getOrCreateVisitorHashForAction();
+        const result = await recordPostReadProgress(parsed.data, visitorHash);
+        if (result.verified) {
+            revalidatePath("/relevant");
+        }
+        return { success: true, verified: result.verified };
     } catch {
         return { success: false };
     }

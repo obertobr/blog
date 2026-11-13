@@ -9,6 +9,13 @@ import {
     PreparedComment,
     PublicComment,
 } from "./comment";
+import {
+    evaluateReadProgress,
+    rankRelevantPosts,
+    ReadProgressInput,
+    RecommendationReason,
+    VisitorPostInteraction,
+} from "./recommendation";
 
 function buildPostInclude(visitorHash?: string | null) {
     return {
@@ -228,9 +235,10 @@ export async function recordPostRead(postId: number, visitorHash: string): Promi
         return;
     }
 
+    const now = new Date();
     const visitor = await prisma.visitor.upsert({
         where: { hash: visitorHash },
-        update: { lastSeen: new Date() },
+        update: { lastSeen: now },
         create: { hash: visitorHash },
     });
 
@@ -243,14 +251,189 @@ export async function recordPostRead(postId: number, visitorHash: string): Promi
         },
         update: {
             readCount: { increment: 1 },
-            lastRead: new Date(),
+            viewStartedAt: now,
+            lastRead: now,
         },
         create: {
             postId: post.id,
             visitorId: visitor.id,
             readCount: 1,
+            viewStartedAt: now,
         },
     });
+}
+
+export async function recordPostReadProgress(
+    input: ReadProgressInput,
+    visitorHash: string
+): Promise<{ verified: boolean }> {
+    const post = await prisma.post.findFirst({
+        where: { id: input.postId, published: true },
+        select: { id: true, content: true },
+    });
+
+    if (!post) {
+        return { verified: false };
+    }
+
+    const now = new Date();
+    const visitor = await prisma.visitor.upsert({
+        where: { hash: visitorHash },
+        update: { lastSeen: now },
+        create: { hash: visitorHash },
+    });
+
+    const existing = await prisma.postRead.findUnique({
+        where: {
+            postId_visitorId: {
+                postId: post.id,
+                visitorId: visitor.id,
+            },
+        },
+    });
+
+    const metrics = evaluateReadProgress({
+        markdown: post.content,
+        activeTimeMs: input.activeTimeMs,
+        scrollDepth: input.scrollDepth,
+        reachedEnd: input.reachedEnd,
+        enteredAtMs: input.enteredAtMs,
+        completedAtMs: input.completedAtMs,
+        serverStartedAtMs: existing?.viewStartedAt ? existing.viewStartedAt.getTime() : null,
+        nowMs: now.getTime(),
+    });
+
+    const alreadyCompletedInCurrentView = Boolean(
+        existing?.completedAt &&
+        existing?.viewStartedAt &&
+        existing.completedAt.getTime() >= existing.viewStartedAt.getTime()
+    );
+
+    const shouldIncrementCompleted = metrics.isVerifiedRead && !alreadyCompletedInCurrentView;
+
+    await prisma.postRead.upsert({
+        where: {
+            postId_visitorId: {
+                postId: post.id,
+                visitorId: visitor.id,
+            },
+        },
+        update: {
+            maxScrollDepth: Math.max(existing?.maxScrollDepth ?? 0, metrics.scrollDepth),
+            activeTimeMs: Math.max(existing?.activeTimeMs ?? 0, metrics.effectiveDurationMs),
+            ...(shouldIncrementCompleted
+                ? {
+                    completedCount: { increment: 1 },
+                    completedAt: now,
+                }
+                : {}),
+            lastRead: now,
+        },
+        create: {
+            postId: post.id,
+            visitorId: visitor.id,
+            readCount: 1,
+            viewStartedAt: now,
+            maxScrollDepth: metrics.scrollDepth,
+            activeTimeMs: metrics.effectiveDurationMs,
+            completedCount: metrics.isVerifiedRead ? 1 : 0,
+            completedAt: metrics.isVerifiedRead ? now : null,
+        },
+    });
+
+    return { verified: metrics.isVerifiedRead };
+}
+
+export async function getRelevantPosts(visitorHash?: string | null) {
+    const [rawPosts, visitor] = await Promise.all([
+        prisma.post.findMany({
+            where: { published: true },
+            orderBy: { createdAt: "desc" },
+            include: {
+                ...buildPostInclude(visitorHash),
+                reads: {
+                    where: { completedCount: { gt: 0 } },
+                    select: { id: true },
+                },
+            },
+        }),
+        visitorHash
+            ? prisma.visitor.findUnique({
+                where: { hash: visitorHash },
+                include: {
+                    likes: {
+                        select: {
+                            postId: true,
+                            createdAt: true,
+                        },
+                    },
+                    reads: {
+                        select: {
+                            postId: true,
+                            readCount: true,
+                            completedCount: true,
+                            maxScrollDepth: true,
+                            activeTimeMs: true,
+                            lastRead: true,
+                        },
+                    },
+                },
+            })
+            : Promise.resolve(null),
+    ]);
+
+    const postsWithStats = rawPosts.map((post) => ({
+        ...post,
+        completedReadsCount: post.reads.length,
+    }));
+
+    const interactionsByPostId = new Map<number, VisitorPostInteraction>();
+
+    if (visitor) {
+        for (const read of visitor.reads) {
+            interactionsByPostId.set(read.postId, {
+                postId: read.postId,
+                liked: false,
+                likedAt: null,
+                readCount: read.readCount,
+                completedCount: read.completedCount,
+                maxScrollDepth: read.maxScrollDepth,
+                activeTimeMs: read.activeTimeMs,
+                lastReadAt: read.lastRead,
+            });
+        }
+
+        for (const like of visitor.likes) {
+            const current = interactionsByPostId.get(like.postId);
+            if (current) {
+                current.liked = true;
+                current.likedAt = like.createdAt;
+            } else {
+                interactionsByPostId.set(like.postId, {
+                    postId: like.postId,
+                    liked: true,
+                    likedAt: like.createdAt,
+                    readCount: 0,
+                    completedCount: 0,
+                    maxScrollDepth: 0,
+                    activeTimeMs: 0,
+                    lastReadAt: null,
+                });
+            }
+        }
+    }
+
+    const ranked = rankRelevantPosts(
+        postsWithStats,
+        Array.from(interactionsByPostId.values())
+    );
+
+    return {
+        posts: ranked.posts,
+        reason: ranked.reason as RecommendationReason,
+        verifiedReadsCount: ranked.verifiedReadsCount,
+        likedPostsCount: ranked.likedPostsCount,
+    };
 }
 
 function toPublicComment(

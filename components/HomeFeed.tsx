@@ -17,6 +17,7 @@ interface HomeFeedProps {
     initialPosts: PostWithTags[];
     initialQuery: string;
     initialTag: string;
+    basePath?: string;
 }
 
 interface TagFilterDropdownProps {
@@ -207,6 +208,7 @@ export default function HomeFeed({
     initialPosts,
     initialQuery,
     initialTag,
+    basePath = "/",
 }: HomeFeedProps) {
     const { t } = useLanguage();
     const [query, setQuery] = useState(initialQuery);
@@ -232,7 +234,7 @@ export default function HomeFeed({
 
     const syncUrl = (nextQuery: string, nextTag: string) => {
         const qs = buildHomeFilterQueryString({ query: nextQuery, tag: nextTag });
-        const nextUrl = qs ? `/?${qs}` : "/";
+        const nextUrl = qs ? `${basePath}?${qs}` : basePath;
         window.history.replaceState(null, "", nextUrl);
     };
 

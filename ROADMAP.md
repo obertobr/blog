@@ -13,4 +13,4 @@
 | **09** | **Sistema de likes nos posts** | Botão de curtir com contagem em tempo real e controle de votos por sessão/usuário | ✅ Concluído |
 | **10** | **Sistema de comentários** | Formulário e listagem de comentários em cada post, com moderação administrativa | ✅ Concluído |
 | **11** | **Filtro por Tags e Pesquisa na Home** | Busca por título/conteúdo e filtro de listagem ao clicar nas tags | ✅ Concluído |
-| **12** | **Página de posts relevantes (`/relevant`)** | Feed de recomendação baseado no histórico de posts lidos e curtidos pelo visitante | ⏳ Em Andamento |
+| **12** | **Página de posts relevantes (`/relevant`)** | Feed de recomendação baseado no histórico de posts lidos e curtidos pelo visitante | ✅ Concluído |
